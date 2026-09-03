@@ -13,3 +13,4 @@ export { type AttributeOptions, NexusLinks } from './services/links';
 export { type EventHandler, NexusRealtime } from './services/realtime';
 export { NexusRemoteConfig, REMOTE_CONFIG_ROOM } from './services/remote-config';
 export { type ActiveOptions, type NexusSurvey, NexusSurveys } from './services/surveys';
+export { NexusReplay } from './services/replay';

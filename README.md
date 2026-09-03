@@ -29,7 +29,8 @@ dependencies.
 11. [Realtime](#11-realtime)
 12. [Deep links & attribution](#12-deep-links--attribution)
 13. [Surveys](#13-surveys)
-14. [Lifecycle & flushing](#14-lifecycle--flushing)
+14. [Session replay](#14-session-replay)
+15. [Lifecycle & flushing](#15-lifecycle--flushing)
 
 ---
 
@@ -298,7 +299,37 @@ await nexus.surveys.respond(surveys[0].id, { q1: 9, q2: 'Great' }, { completed: 
 nexus.surveys.dismiss(surveyId);
 ```
 
-## 14. Lifecycle & flushing
+## 14. Session replay
+
+Browser-only. Records the DOM with **rrweb** and ships events to the Nexus
+console's player, correlated to the journey session. Requires the optional
+`rrweb` peer dependency (`npm install rrweb`).
+
+```ts
+const nexus = Nexus.init({
+  apiKey: 'nxs_...',
+  replayEnabled: true,            // auto-starts in the browser
+  replayMaskAllInputs: true,      // redact all input values (default)
+  replayBlockClass: 'nexus-block',    // fully block these elements
+  replayMaskTextClass: 'nexus-mask',  // mask these elements' text
+});
+
+// Manual control:
+await nexus.replay.start();
+await nexus.replay.stop();
+nexus.replay.isRecording;
+```
+
+Redaction in your markup:
+
+```html
+<div class="nexus-block">     <!-- never captured --></div>
+<span class="nexus-mask">4111 1111 1111 1111</span> <!-- text masked -->
+```
+
+On the server (Node) replay is a no-op. It's opt-in (billed / privacy-sensitive).
+
+## 15. Lifecycle & flushing
 
 ```ts
 await nexus.flush();   // flush all batched telemetry now

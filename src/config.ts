@@ -28,6 +28,17 @@ export interface NexusConfig {
   remoteConfigRealtime?: boolean;
   /** In-app default Remote Config values. */
   remoteConfigDefaults?: Record<string, unknown>;
+  /** Record browser session replay (rrweb). Requires the `rrweb` peer dependency.
+   * Browser-only; no-op on the server. Default `false`. */
+  replayEnabled?: boolean;
+  /** Redact every input value from replay. Default `true`. */
+  replayMaskAllInputs?: boolean;
+  /** CSS class on elements to fully block (never captured) in replay. Default `nexus-block`. */
+  replayBlockClass?: string;
+  /** CSS class on elements whose text is masked in replay. Default `nexus-mask`. */
+  replayMaskTextClass?: string;
+  /** How often (ms) buffered replay events are shipped. Default 5000. */
+  replayFlushIntervalMs?: number;
   /** Custom fetch implementation (defaults to global `fetch`). */
   fetch?: typeof globalThis.fetch;
 }
@@ -39,6 +50,10 @@ export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl'
   httpBase: string;
   socketBase: string;
 }
+
+// Replay defaults kept together for readability.
+const REPLAY_BLOCK_CLASS = 'nexus-block';
+const REPLAY_MASK_CLASS = 'nexus-mask';
 
 export function resolveConfig(config: NexusConfig): ResolvedConfig {
   const baseUrl = (config.baseUrl ?? 'https://nexus.inverge.net').replace(/\/+$/, '');
@@ -61,6 +76,11 @@ export function resolveConfig(config: NexusConfig): ResolvedConfig {
     remoteConfigEnabled: config.remoteConfigEnabled ?? false,
     remoteConfigRealtime: config.remoteConfigRealtime ?? false,
     remoteConfigDefaults: config.remoteConfigDefaults ?? {},
+    replayEnabled: config.replayEnabled ?? false,
+    replayMaskAllInputs: config.replayMaskAllInputs ?? true,
+    replayBlockClass: config.replayBlockClass ?? REPLAY_BLOCK_CLASS,
+    replayMaskTextClass: config.replayMaskTextClass ?? REPLAY_MASK_CLASS,
+    replayFlushIntervalMs: config.replayFlushIntervalMs ?? 5000,
     fetch: fetchImpl.bind(globalThis),
     httpBase: baseUrl,
     socketBase: (config.realtimeUrl ?? baseUrl).replace(/\/+$/, ''),

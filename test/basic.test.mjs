@@ -37,3 +37,11 @@ test('custom attributes + defaults precedence', () => {
   n.remoteConfig.setAttribute('plan', null); // remove
   n.dispose();
 });
+
+test('replay is a no-op on the server (Node)', async () => {
+  const n = Nexus.init({ apiKey: 'nxs_test', autoTrackSessions: false, autoCaptureErrors: false, replayEnabled: true, logLevel: 'silent' });
+  await n.replay.start();
+  assert.equal(n.replay.isRecording, false); // browser-only
+  await n.replay.flush();                     // no throw with empty buffer
+  n.dispose();
+});

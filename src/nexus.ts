@@ -12,6 +12,7 @@ import { NexusLinks } from './services/links';
 import { NexusRealtime } from './services/realtime';
 import { NexusRemoteConfig } from './services/remote-config';
 import { NexusSurveys } from './services/surveys';
+import { NexusReplay } from './services/replay';
 
 /**
  * The Nexus umbrella SDK — one entry point for every service, correlated to a
@@ -40,6 +41,7 @@ export class Nexus {
   readonly realtime: NexusRealtime;
   readonly remoteConfig: NexusRemoteConfig;
   readonly surveys: NexusSurveys;
+  readonly replay: NexusReplay;
 
   private disposeHooks: Array<() => void> = [];
 
@@ -64,6 +66,7 @@ export class Nexus {
     this.realtime = new NexusRealtime(this.config, this.identity);
     this.remoteConfig = new NexusRemoteConfig(this.http, this.identity, this.config);
     this.surveys = new NexusSurveys(this.http, this.identity);
+    this.replay = new NexusReplay(this.http, this.identity, this.config);
   }
 
   /** The app-wide instance. Throws if {@link init} hasn't run. */
@@ -88,6 +91,7 @@ export class Nexus {
     if (this.config.autoCaptureErrors) this.errors.install();
     if (this.config.autoTrackSessions) void this.sessions.track();
     if (this.config.remoteConfigEnabled) void this.remoteConfig.fetch();
+    if (this.config.replayEnabled) void this.replay.start();
     if (this.config.remoteConfigRealtime) {
       void this.realtime.connect().then(() => this.remoteConfig.subscribeRealtime(this.realtime));
     }
@@ -131,7 +135,7 @@ export class Nexus {
 
   /** Flush all batched telemetry now. */
   async flush(): Promise<void> {
-    await Promise.all([this.events.flush(), this.logs.flush()]);
+    await Promise.all([this.events.flush(), this.logs.flush(), this.replay.flush()]);
   }
 
   dispose(): void {
@@ -139,6 +143,7 @@ export class Nexus {
     this.disposeHooks = [];
     this.events.dispose();
     this.logs.dispose();
+    this.replay.dispose();
     this.realtime.disconnect();
     if (Nexus._instance === this) Nexus._instance = null;
   }

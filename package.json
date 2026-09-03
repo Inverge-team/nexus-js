@@ -5,11 +5,27 @@
   "author": "Inverge <info@inverge.net>",
   "license": "MIT",
   "homepage": "https://nexus.inverge.net",
-  "repository": { "type": "git", "url": "https://github.com/Inverge-team/nexus-js" },
-  "keywords": ["nexus","inverge","analytics","feature-flags","remote-config","realtime","logging","error-monitoring","react","node"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Inverge-team/nexus-js"
+  },
+  "keywords": [
+    "nexus",
+    "inverge",
+    "analytics",
+    "feature-flags",
+    "remote-config",
+    "realtime",
+    "logging",
+    "error-monitoring",
+    "react",
+    "node"
+  ],
   "type": "module",
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -30,19 +46,31 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "peerDependencies": {
     "react": ">=17",
+    "rrweb": ">=2",
     "socket.io-client": ">=4"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true },
-    "socket.io-client": { "optional": true }
+    "react": {
+      "optional": true
+    },
+    "socket.io-client": {
+      "optional": true
+    },
+    "rrweb": {
+      "optional": "true"
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/react": "^18.0.0",
+    "jsdom": "^29.1.1",
     "react": "^18.0.0",
+    "rrweb": "^2.0.0-alpha.18",
     "socket.io-client": "^4.7.0",
     "tsup": "^8.0.0",
     "typescript": "^5.5.0"
