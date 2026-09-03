@@ -1,0 +1,68 @@
+/** Configuration for {@link Nexus.init}. */
+export interface NexusConfig {
+  /** Tenant API key (`nxs_...`). Sent as `x-api-key`, and in the socket handshake. */
+  apiKey: string;
+  /** API origin. Partner endpoints live under `/partner`. Default `https://nexus.inverge.net`. */
+  baseUrl?: string;
+  /** Realtime (Socket.IO) origin. Defaults to {@link baseUrl}. */
+  realtimeUrl?: string;
+  /** Start/refresh a journey session automatically. Default `true`. */
+  autoTrackSessions?: boolean;
+  /** Capture uncaught errors automatically (browser `window`/`unhandledrejection`, Node `process`). Default `true`. */
+  autoCaptureErrors?: boolean;
+  /** Flush queued telemetry on page hide / process exit. Default `true`. */
+  flushOnHide?: boolean;
+  /** Batch flush cadence (ms) for events/logs. Default 10000. */
+  flushIntervalMs?: number;
+  /** Max items per flush. Default 50. */
+  maxBatch?: number;
+  /** Diagnostic verbosity. Default `warn`. */
+  logLevel?: 'silent' | 'error' | 'warn' | 'info' | 'debug';
+  /** App/service version reported with telemetry. */
+  appVersion?: string;
+  /** Properties merged into every event/person context. */
+  defaultProperties?: Record<string, unknown>;
+  /** Fetch Remote Config at init (and on foreground). Default `false`. */
+  remoteConfigEnabled?: boolean;
+  /** Re-fetch Remote Config live on publish (needs a realtime connection). Default `false`. */
+  remoteConfigRealtime?: boolean;
+  /** In-app default Remote Config values. */
+  remoteConfigDefaults?: Record<string, unknown>;
+  /** Custom fetch implementation (defaults to global `fetch`). */
+  fetch?: typeof globalThis.fetch;
+}
+
+export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl' | 'appVersion' | 'fetch'>> {
+  realtimeUrl?: string;
+  appVersion?: string;
+  fetch: typeof globalThis.fetch;
+  httpBase: string;
+  socketBase: string;
+}
+
+export function resolveConfig(config: NexusConfig): ResolvedConfig {
+  const baseUrl = (config.baseUrl ?? 'https://nexus.inverge.net').replace(/\/+$/, '');
+  const fetchImpl = config.fetch ?? globalThis.fetch;
+  if (typeof fetchImpl !== 'function') {
+    throw new Error('Nexus: no global `fetch` available — pass `fetch` in the config (Node < 18).');
+  }
+  return {
+    apiKey: config.apiKey,
+    baseUrl,
+    realtimeUrl: config.realtimeUrl,
+    autoTrackSessions: config.autoTrackSessions ?? true,
+    autoCaptureErrors: config.autoCaptureErrors ?? true,
+    flushOnHide: config.flushOnHide ?? true,
+    flushIntervalMs: config.flushIntervalMs ?? 10000,
+    maxBatch: config.maxBatch ?? 50,
+    logLevel: config.logLevel ?? 'warn',
+    appVersion: config.appVersion,
+    defaultProperties: config.defaultProperties ?? {},
+    remoteConfigEnabled: config.remoteConfigEnabled ?? false,
+    remoteConfigRealtime: config.remoteConfigRealtime ?? false,
+    remoteConfigDefaults: config.remoteConfigDefaults ?? {},
+    fetch: fetchImpl.bind(globalThis),
+    httpBase: baseUrl,
+    socketBase: (config.realtimeUrl ?? baseUrl).replace(/\/+$/, ''),
+  };
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@inverge/nexus",
+  "version": "1.0.0",
+  "description": "Nexus — one JavaScript/TypeScript SDK for all Inverge Nexus services (analytics, logs, errors, feature flags, remote config, realtime, links, surveys). Works in every browser framework and in Node/Express.",
+  "author": "Inverge <info@inverge.net>",
+  "license": "MIT",
+  "homepage": "https://nexus.inverge.net",
+  "repository": { "type": "git", "url": "https://github.com/Inverge-team/nexus-js" },
+  "keywords": ["nexus","inverge","analytics","feature-flags","remote-config","realtime","logging","error-monitoring","react","node"],
+  "type": "module",
+  "sideEffects": false,
+  "files": ["dist"],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=18" },
+  "peerDependencies": {
+    "react": ">=17",
+    "socket.io-client": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "socket.io-client": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "socket.io-client": "^4.7.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  }
+}
