@@ -2,7 +2,7 @@
 export interface NexusConfig {
   /** Tenant API key (`nxs_...`). Sent as `x-api-key`, and in the socket handshake. */
   apiKey: string;
-  /** API origin. Partner endpoints live under `/partner`. Default `https://nexus.inverge.net`. */
+  /** API origin. Partner endpoints live under `/partner`. Default `https://services.inverge.net`. */
   baseUrl?: string;
   /** Realtime (Socket.IO) origin. Defaults to {@link baseUrl}. */
   realtimeUrl?: string;
@@ -56,7 +56,7 @@ const REPLAY_BLOCK_CLASS = 'nexus-block';
 const REPLAY_MASK_CLASS = 'nexus-mask';
 
 export function resolveConfig(config: NexusConfig): ResolvedConfig {
-  const baseUrl = (config.baseUrl ?? 'https://nexus.inverge.net').replace(/\/+$/, '');
+  const baseUrl = (config.baseUrl ?? 'https://services.inverge.net').replace(/\/+$/, '');
   const fetchImpl = config.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== 'function') {
     throw new Error('Nexus: no global `fetch` available — pass `fetch` in the config (Node < 18).');

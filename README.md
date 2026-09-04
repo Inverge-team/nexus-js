@@ -53,7 +53,7 @@ import { Nexus } from '@inverge/nexus';
 
 const nexus = Nexus.init({
   apiKey: 'nxs_live_xxx',
-  baseUrl: 'https://nexus.inverge.net',
+  baseUrl: 'https://services.inverge.net',
   remoteConfigEnabled: true,
 });
 
@@ -72,7 +72,7 @@ Access it later with `Nexus.instance` (or the React `useNexus()` hook). Services
 | Option | Type | Default | Purpose |
 |---|---|---|---|
 | `apiKey` | `string` | — | Tenant API key (`nxs_…`). |
-| `baseUrl` | `string` | `https://nexus.inverge.net` | API origin. |
+| `baseUrl` | `string` | `https://services.inverge.net` | API origin. |
 | `realtimeUrl` | `string` | `baseUrl` | Socket.IO origin, if different. |
 | `autoTrackSessions` | `boolean` | `true` | Start/refresh a session automatically. |
 | `autoCaptureErrors` | `boolean` | `true` | Report uncaught errors (browser + Node). |
