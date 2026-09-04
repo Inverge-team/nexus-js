@@ -5,6 +5,8 @@ import type { NexusIdentity } from '../identity';
 export interface IdentifyOptions {
   email?: string;
   name?: string;
+  /** End-user phone number (E.164 recommended). */
+  phone?: string;
   traits?: Record<string, unknown>;
 }
 
@@ -24,6 +26,7 @@ export class NexusSessions {
       distinctId,
       ...(options.email ? { email: options.email } : {}),
       ...(options.name ? { name: options.name } : {}),
+      ...(options.phone ? { phone: options.phone } : {}),
       ...(options.traits ? { traits: options.traits } : {}),
     });
     await this.track();
