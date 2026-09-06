@@ -29,8 +29,11 @@ dependencies.
 11. [Realtime](#11-realtime)
 12. [Deep links & attribution](#12-deep-links--attribution)
 13. [Surveys](#13-surveys)
-14. [Session replay](#14-session-replay)
-15. [Lifecycle & flushing](#15-lifecycle--flushing)
+14. [Push notifications](#14-push-notifications)
+15. [In-app messages](#15-in-app-messages)
+16. [Live Activities](#16-live-activities)
+17. [Session replay](#17-session-replay)
+18. [Lifecycle & flushing](#18-lifecycle--flushing)
 
 ---
 
@@ -63,7 +66,7 @@ nexus.events.track('page_view', { path: '/pricing' });
 
 Access it later with `Nexus.instance` (or the React `useNexus()` hook). Services:
 `sessions`, `events`, `logs`, `errors`, `flags`, `remoteConfig`, `links`,
-`realtime`, `surveys`.
+`realtime`, `surveys`, `push`, `inApp`, `liveActivities`.
 
 ---
 
@@ -299,7 +302,72 @@ await nexus.surveys.respond(surveys[0].id, { q1: 9, q2: 'Great' }, { completed: 
 nexus.surveys.dismiss(surveyId);
 ```
 
-## 14. Session replay
+## 14. Push notifications
+
+Send transactional push to **users or segments**. Campaigns, provider
+credentials, segments and templates are managed in the console.
+
+```ts
+await nexus.push
+  .notification()
+  .title('Your order shipped')
+  .body('Track it in the app')
+  .image('https://cdn.example.com/box.png')
+  .data({ screen: '/orders/42' })
+  .button('track', 'Track', { url: 'https://x/track' })
+  .iosBadge(1)
+  .androidVisibility('public')
+  .setSegments(['vip', 'active_7d']) // union of saved segments
+  .send();                           // → { sent, failed, recipients }
+```
+
+Targeting (combine freely; union): `.toUsers([...])` / `.toUser(id)`,
+`.setSegments([...])` (aliases `.toSegments`, `.toSegment(id)`),
+`.where({ platform: 'ios', lang: 'en' })`, `.toAll()`. Options are fluent
+(`iosBadge`, `iosInterruptionLevel`, `androidVisibility`, `androidLargeIcon`, …)
+with `.option(k, v)` / `.options({...})` as escape hatches.
+
+Quick send: `nexus.push.send(['u_1'], { title: 'Welcome 👋' })`.
+
+---
+
+## 15. In-app messages
+
+Composed in the console and shown by the client SDK. Server-side, fetch the ones
+a user is eligible for and record impressions / clicks.
+
+```ts
+const messages = await nexus.inApp.active({ distinctId: 'u_1' });
+await nexus.inApp.impression('m1', { distinctId: 'u_1' });
+await nexus.inApp.click('m1', 'cta', { distinctId: 'u_1' });
+```
+
+---
+
+## 16. Live Activities
+
+A live, updating view of an in-progress event on the iOS Lock Screen / Dynamic
+Island and as an Android live notification — driven from your backend.
+
+```ts
+await nexus.liveActivities
+  .activity('DeliveryAttributes', 'order_42')
+  .title('Order #42').status('Preparing').progress(20)
+  .toUser('u_1').priority(10)
+  .start();
+
+await nexus.liveActivities.activity('order_42').status('On the way').progress(70).priority(5).update();
+await nexus.liveActivities.activity('order_42').status('Delivered').dismissAt('2026-01-01T12:00:00Z').end();
+```
+
+`activity(type, id)` for start; `activity(id)` for update/end. Content-state
+helpers: `title/subtitle/body/status/progress`, plus `.set(k, v)` / `.state({})`.
+Targeting: `.toUser(s)` (per-order) or `.shared()`. iOS needs the APNs key in the
+console + a Widget Extension; Android renders a live notification with no setup.
+
+---
+
+## 17. Session replay
 
 Browser-only. Records the DOM with **rrweb** and ships events to the Nexus
 console's player, correlated to the journey session. Requires the optional
@@ -329,7 +397,7 @@ Redaction in your markup:
 
 On the server (Node) replay is a no-op. It's opt-in (billed / privacy-sensitive).
 
-## 15. Lifecycle & flushing
+## 18. Lifecycle & flushing
 
 ```ts
 await nexus.flush();   // flush all batched telemetry now

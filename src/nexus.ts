@@ -13,6 +13,9 @@ import { NexusRealtime } from './services/realtime';
 import { NexusRemoteConfig } from './services/remote-config';
 import { NexusSurveys } from './services/surveys';
 import { NexusReplay } from './services/replay';
+import { NexusPush } from './services/push';
+import { NexusInApp } from './services/inapp';
+import { NexusLiveActivities } from './services/live-activities';
 
 /**
  * The Nexus umbrella SDK — one entry point for every service, correlated to a
@@ -42,6 +45,9 @@ export class Nexus {
   readonly remoteConfig: NexusRemoteConfig;
   readonly surveys: NexusSurveys;
   readonly replay: NexusReplay;
+  readonly push: NexusPush;
+  readonly inApp: NexusInApp;
+  readonly liveActivities: NexusLiveActivities;
 
   private disposeHooks: Array<() => void> = [];
 
@@ -67,6 +73,9 @@ export class Nexus {
     this.remoteConfig = new NexusRemoteConfig(this.http, this.identity, this.config);
     this.surveys = new NexusSurveys(this.http, this.identity);
     this.replay = new NexusReplay(this.http, this.identity, this.config);
+    this.push = new NexusPush(this.http, this.identity);
+    this.inApp = new NexusInApp(this.http, this.identity);
+    this.liveActivities = new NexusLiveActivities(this.http, this.identity);
   }
 
   /** The app-wide instance. Throws if {@link init} hasn't run. */

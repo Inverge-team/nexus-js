@@ -14,3 +14,17 @@ export { type EventHandler, NexusRealtime } from './services/realtime';
 export { NexusRemoteConfig, REMOTE_CONFIG_ROOM } from './services/remote-config';
 export { type ActiveOptions, type NexusSurvey, NexusSurveys } from './services/surveys';
 export { NexusReplay } from './services/replay';
+export {
+  NexusPush,
+  NexusPushBuilder,
+  type PushMessage,
+  type PushOptions,
+  type PushActionButton,
+  type PushSendResult,
+} from './services/push';
+export { NexusInApp, type NexusInAppMessage } from './services/inapp';
+export {
+  NexusLiveActivities,
+  NexusLiveActivityBuilder,
+  type LiveActivityResult,
+} from './services/live-activities';
