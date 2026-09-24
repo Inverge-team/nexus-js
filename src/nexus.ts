@@ -87,9 +87,16 @@ export class Nexus {
     return Nexus._instance != null;
   }
 
-  /** Initialise once at startup. Re-calling disposes the previous instance. */
-  static init(config: NexusConfig): Nexus {
-    Nexus._instance?.dispose();
+  /** Initialise the SDK. **Idempotent:** if an instance already exists it is
+   *  returned as-is — a repeated call (an SSR module re-eval, an HMR reload, a
+   *  second import) will NOT tear down and reconnect the live realtime socket.
+   *  Pass `{ force: true }` to deliberately dispose the current instance and
+   *  start a fresh one (e.g. to switch API keys). */
+  static init(config: NexusConfig, opts?: { force?: boolean }): Nexus {
+    if (Nexus._instance) {
+      if (!opts?.force) return Nexus._instance;
+      Nexus._instance.dispose();
+    }
     const n = new Nexus(config);
     n.boot();
     Nexus._instance = n;

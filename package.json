@@ -1,13 +1,13 @@
 {
   "name": "@inverge/nexus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Nexus — one JavaScript/TypeScript SDK for all Inverge Nexus services (analytics, logs, errors, feature flags, remote config, realtime, links, surveys). Works in every browser framework and in Node/Express.",
   "author": "Inverge <info@inverge.net>",
   "license": "MIT",
   "homepage": "https://nexus.inverge.net",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Inverge-team/nexus-js"
+    "url": "git+https://github.com/Inverge-team/nexus-js.git"
   },
   "keywords": [
     "nexus",
