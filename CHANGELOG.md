@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+
+- **Live Activity templates.** `liveActivities.template(key, activityId)` starts an
+  activity from a template designed in the Nexus console (or an inline design) and
+  sends only data; the mobile SDKs render it on iOS + Android in each device's
+  language. New data setters `step`, `etaAt`, `eta`, `value`/`values`, `canceled`,
+  `done`, `data`, plus `lang` and `alert` for the start. Updates/ends send partial
+  `data` that the server merges. Plain forms: `startTemplate`, `updateData`,
+  `end(id, { data })`. `LiveActivityResult` gains `iosTargets` / `iosWarning`.
+  The plain `activity(type, id)` contentState path is unchanged.
+
 ## 1.1.0
 
 - **Realtime is now safe to wire from any framework without duplicating.** Fixes

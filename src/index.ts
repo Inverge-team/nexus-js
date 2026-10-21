@@ -27,4 +27,6 @@ export {
   NexusLiveActivities,
   NexusLiveActivityBuilder,
   type LiveActivityResult,
+  type LiveActivityData,
+  type LiveActivityTemplateStartOptions,
 } from './services/live-activities';

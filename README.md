@@ -347,7 +347,39 @@ await nexus.inApp.click('m1', 'cta', { distinctId: 'u_1' });
 ## 16. Live Activities
 
 A live, updating view of an in-progress event on the iOS Lock Screen / Dynamic
-Island and as an Android live notification — driven from your backend.
+Island and as an Android 16 Live Update — driven from your backend.
+
+### Templates (recommended)
+
+Design the activity once in the Nexus console (**Live Activities → Templates**:
+layout, colours, steps, icons, translations) — the Nexus mobile SDKs render it on
+iOS and Android, each device in its own language. Your server sends only data:
+
+```ts
+await nexus.liveActivities
+  .template('order_tracking', 'order_42')       // template key + your activity id
+  .step('pending')                              // a step id (or label) of the template
+  .etaAt(new Date(Date.now() + 25 * 60_000))    // live countdown on the device
+  .values({ driver: 'Ahmed', quantity: '500 L · Diesel' }) // {{placeholders}}
+  .toUser('user_7')
+  .start();
+
+// Updates are partial — only what changed; the server merges it.
+await nexus.liveActivities.activity('order_42').step('on_the_way').progress(0.4).update();
+await nexus.liveActivities.activity('order_42').step('completed').end();   // final state, then dismissed
+await nexus.liveActivities.activity('order_42').canceled().end();          // or the canceled state
+```
+
+Template data setters: `step`, `progress` (0–1 toward the next step), `etaAt`
+(Date / unix s / ms) or `eta('8 min')` for fixed text, `value(k, v)` / `values({})`,
+`canceled()`, `done()`, `title/subtitle/body` (override the template's texts).
+Start-only: `lang('ar')` forces one language for everyone (default: each device's
+app language), `alert(title, body)` sets the iOS alert. Plain-function forms:
+`startTemplate(template, id, data, options)`, `updateData(id, data)`,
+`end(id, { data })`. `template` may also be an inline design object. The start
+result carries `iosTargets` and an `iosWarning` explaining a 0 iOS delivery.
+
+### Plain (your own iOS widget)
 
 ```ts
 await nexus.liveActivities
