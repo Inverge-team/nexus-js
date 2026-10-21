@@ -19,6 +19,7 @@ export class NexusEvents {
 
   /** Track a named event with optional properties. */
   track(name: string, properties?: Record<string, unknown>): void {
+    if (!this.cfg.services.events) return; // switched off — don't even buffer
     this.onTracked?.(name);
     this.queue.add({
       name,

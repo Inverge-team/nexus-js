@@ -92,6 +92,45 @@ Access it later with `Nexus.instance` (or the React `useNexus()` hook). Services
 
 ---
 
+### Switching services off
+
+Turn a Nexus product off **without removing the code that uses it**. A
+switched-off service makes no request and never throws: calls return their
+neutral value (`null` / empty / your defaults), events and logs aren't even
+buffered, and background work (socket, replay recorder, error handlers) doesn't
+start. All default to on.
+
+On **Node** use environment variables:
+
+```dotenv
+NEXUS_LIVE_ACTIVITIES_ENABLED=false   # just Live Activities
+NEXUS_ENABLED=false                   # everything
+```
+
+| Variable | `services` key | Switches off |
+|---|---|---|
+| `NEXUS_REALTIME_ENABLED` | `realtime` | rooms / emits |
+| `NEXUS_EVENTS_ENABLED` | `events` | events |
+| `NEXUS_ERRORS_ENABLED` | `errors` | error capture |
+| `NEXUS_LOGS_ENABLED` | `logs` | logs |
+| `NEXUS_SESSIONS_ENABLED` | `sessions` | sessions |
+| `NEXUS_FLAGS_ENABLED` | `flags` | feature flags (→ your defaults) |
+| `NEXUS_REMOTE_CONFIG_ENABLED` | `remoteConfig` | Remote Config (→ your defaults) |
+| `NEXUS_LINKS_ENABLED` | `links` | deep links |
+| `NEXUS_SURVEYS_ENABLED` | `surveys` | surveys |
+| `NEXUS_PUSH_ENABLED` | `push` | push notifications |
+| `NEXUS_IN_APP_ENABLED` | `inApp` | in-app messages |
+| `NEXUS_LIVE_ACTIVITIES_ENABLED` | `liveActivities` | Live Activities |
+| `NEXUS_REPLAY_ENABLED` | `replay` | session replay |
+
+In the **browser** (no environment) pass them in code:
+`Nexus.init({ apiKey, services: { liveActivities: false } })` or `enabled: false`.
+Off wins: a service is on only if neither the config nor the environment turns
+it off. `nexus.enabled('push')` tells you whether one is on; unknown names are
+rejected.
+
+---
+
 ## 4. Framework guides
 
 The core is framework-agnostic — `Nexus.init(...)` once, then use the singleton

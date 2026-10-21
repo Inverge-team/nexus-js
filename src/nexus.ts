@@ -10,6 +10,7 @@ import { NexusErrors } from './services/errors';
 import { NexusFlags } from './services/flags';
 import { NexusLinks } from './services/links';
 import { NexusRealtime } from './services/realtime';
+import type { NexusService } from './switches';
 import { NexusRemoteConfig } from './services/remote-config';
 import { NexusSurveys } from './services/surveys';
 import { NexusReplay } from './services/replay';
@@ -103,12 +104,19 @@ export class Nexus {
     return n;
   }
 
+  /** Whether a product is switched on — config `services` / `NEXUS_<SERVICE>_ENABLED`. */
+  enabled(service: NexusService): boolean {
+    return this.config.services[service];
+  }
+
   private boot(): void {
-    if (this.config.autoCaptureErrors) this.errors.install();
-    if (this.config.autoTrackSessions) void this.sessions.track();
-    if (this.config.remoteConfigEnabled) void this.remoteConfig.fetch();
-    if (this.config.replayEnabled) void this.replay.start();
-    if (this.config.remoteConfigRealtime) {
+    const on = this.config.services;
+    // Switched-off services don't start background work (handlers, recorder, socket).
+    if (this.config.autoCaptureErrors && on.errors) this.errors.install();
+    if (this.config.autoTrackSessions && on.sessions) void this.sessions.track();
+    if (this.config.remoteConfigEnabled && on.remoteConfig) void this.remoteConfig.fetch();
+    if (this.config.replayEnabled && on.replay) void this.replay.start();
+    if (this.config.remoteConfigRealtime && on.remoteConfig && on.realtime) {
       void this.realtime.connect().then(() => this.remoteConfig.subscribeRealtime(this.realtime));
     }
     this.installLifecycle();

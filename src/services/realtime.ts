@@ -28,6 +28,10 @@ export class NexusRealtime {
    *  connection already open (or being opened) is reused, never duplicated.
    *  Rooms are re-joined after every reconnect. */
   async connect(): Promise<void> {
+    if (!this.cfg.services.realtime) {
+      NexusLog.info(`realtime is switched off (${this.cfg.servicesOffReason.realtime}) — not connecting`);
+      return;
+    }
     if (this.socket) return;
     if (this.connecting) return this.connecting;
     this.connecting = this.openSocket().finally(() => {

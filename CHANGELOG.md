@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- **Switch services off without removing code** — `NEXUS_<SERVICE>_ENABLED=false`
+  (Node) or `services: { liveActivities: false }` / `enabled: false` in the config
+  (browser). A switched-off service makes no request and never throws, events/logs
+  aren't buffered, and the socket / replay recorder / error handlers don't start.
+  Off wins over the config. `nexus.enabled(service)`, exported `SERVICE_ENV`.
+
 ## 1.2.0
 
 - **Live Activity templates.** `liveActivities.template(key, activityId)` starts an
