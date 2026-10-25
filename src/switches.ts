@@ -28,7 +28,8 @@ export type NexusService =
   | 'push'
   | 'inApp'
   | 'liveActivities'
-  | 'replay';
+  | 'replay'
+  | 'telescope';
 
 /** Service → the environment variable that switches it. */
 export const SERVICE_ENV: Readonly<Record<NexusService, string>> = {
@@ -45,6 +46,7 @@ export const SERVICE_ENV: Readonly<Record<NexusService, string>> = {
   inApp: 'NEXUS_IN_APP_ENABLED',
   liveActivities: 'NEXUS_LIVE_ACTIVITIES_ENABLED',
   replay: 'NEXUS_REPLAY_ENABLED',
+  telescope: 'NEXUS_TELESCOPE_ENABLED',
 };
 
 /** The master switch. */
@@ -67,6 +69,7 @@ const PATHS: Record<string, NexusService> = {
   inapp: 'inApp',
   'live-activities': 'liveActivities',
   replay: 'replay',
+  telescope: 'telescope',
 };
 
 /** The service a `/partner/...` path belongs to, or null for unswitched paths. */

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0
+
+- **Nexus Telescope (Node)** — new entry point `@inverge/nexus/telescope`
+  (Node-only, so browser bundles are unaffected). `NexusTelescope.init()` records
+  every request (hooks `http.Server`, so Express, Fastify, Koa, NestJS, Hapi and
+  Next.js all work), outgoing `fetch` / `http` / axios / got calls with a W3C
+  `traceparent` (downstream services join the trace), `console` output, and
+  `pg` / `mysql2` / `ioredis` queries; `telescope.prisma()` for Prisma. Framework
+  helpers `express()` / `expressErrors()` / `fastify()` / `koa()`, units of work
+  `job()` / `command()` / `schedule()` + `inject()` to carry a trace into a queue,
+  spans, tail sampling (failed / slow / monitored journeys always kept), and
+  settings from the console. Switch off with `NEXUS_TELESCOPE_ENABLED=false`.
+
 ## 1.3.0
 
 - **Switch services off without removing code** — `NEXUS_<SERVICE>_ENABLED=false`
