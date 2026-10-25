@@ -46,7 +46,7 @@ export class NexusReplay {
 
   /** Start recording (idempotent). No-op outside the browser or without rrweb. */
   async start(): Promise<void> {
-    if (!isBrowser || this.recording) return;
+    if (!isBrowser || this.recording || !this.cfg.services.replay) return; // switched off — don't record
     let record: typeof import('rrweb').record;
     try {
       ({ record } = await import('rrweb'));

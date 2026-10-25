@@ -92,6 +92,45 @@ Access it later with `Nexus.instance` (or the React `useNexus()` hook). Services
 
 ---
 
+### Switching services off
+
+Turn a Nexus product off **without removing the code that uses it**. A
+switched-off service makes no request and never throws: calls return their
+neutral value (`null` / empty / your defaults), events and logs aren't even
+buffered, and background work (socket, replay recorder, error handlers) doesn't
+start. All default to on.
+
+On **Node** use environment variables:
+
+```dotenv
+NEXUS_LIVE_ACTIVITIES_ENABLED=false   # just Live Activities
+NEXUS_ENABLED=false                   # everything
+```
+
+| Variable | `services` key | Switches off |
+|---|---|---|
+| `NEXUS_REALTIME_ENABLED` | `realtime` | rooms / emits |
+| `NEXUS_EVENTS_ENABLED` | `events` | events |
+| `NEXUS_ERRORS_ENABLED` | `errors` | error capture |
+| `NEXUS_LOGS_ENABLED` | `logs` | logs |
+| `NEXUS_SESSIONS_ENABLED` | `sessions` | sessions |
+| `NEXUS_FLAGS_ENABLED` | `flags` | feature flags (→ your defaults) |
+| `NEXUS_REMOTE_CONFIG_ENABLED` | `remoteConfig` | Remote Config (→ your defaults) |
+| `NEXUS_LINKS_ENABLED` | `links` | deep links |
+| `NEXUS_SURVEYS_ENABLED` | `surveys` | surveys |
+| `NEXUS_PUSH_ENABLED` | `push` | push notifications |
+| `NEXUS_IN_APP_ENABLED` | `inApp` | in-app messages |
+| `NEXUS_LIVE_ACTIVITIES_ENABLED` | `liveActivities` | Live Activities |
+| `NEXUS_REPLAY_ENABLED` | `replay` | session replay |
+
+In the **browser** (no environment) pass them in code:
+`Nexus.init({ apiKey, services: { liveActivities: false } })` or `enabled: false`.
+Off wins: a service is on only if neither the config nor the environment turns
+it off. `nexus.enabled('push')` tells you whether one is on; unknown names are
+rejected.
+
+---
+
 ## 4. Framework guides
 
 The core is framework-agnostic — `Nexus.init(...)` once, then use the singleton
@@ -347,7 +386,39 @@ await nexus.inApp.click('m1', 'cta', { distinctId: 'u_1' });
 ## 16. Live Activities
 
 A live, updating view of an in-progress event on the iOS Lock Screen / Dynamic
-Island and as an Android live notification — driven from your backend.
+Island and as an Android 16 Live Update — driven from your backend.
+
+### Templates (recommended)
+
+Design the activity once in the Nexus console (**Live Activities → Templates**:
+layout, colours, steps, icons, translations) — the Nexus mobile SDKs render it on
+iOS and Android, each device in its own language. Your server sends only data:
+
+```ts
+await nexus.liveActivities
+  .template('order_tracking', 'order_42')       // template key + your activity id
+  .step('pending')                              // a step id (or label) of the template
+  .etaAt(new Date(Date.now() + 25 * 60_000))    // live countdown on the device
+  .values({ driver: 'Ahmed', quantity: '500 L · Diesel' }) // {{placeholders}}
+  .toUser('user_7')
+  .start();
+
+// Updates are partial — only what changed; the server merges it.
+await nexus.liveActivities.activity('order_42').step('on_the_way').progress(0.4).update();
+await nexus.liveActivities.activity('order_42').step('completed').end();   // final state, then dismissed
+await nexus.liveActivities.activity('order_42').canceled().end();          // or the canceled state
+```
+
+Template data setters: `step`, `progress` (0–1 toward the next step), `etaAt`
+(Date / unix s / ms) or `eta('8 min')` for fixed text, `value(k, v)` / `values({})`,
+`canceled()`, `done()`, `title/subtitle/body` (override the template's texts).
+Start-only: `lang('ar')` forces one language for everyone (default: each device's
+app language), `alert(title, body)` sets the iOS alert. Plain-function forms:
+`startTemplate(template, id, data, options)`, `updateData(id, data)`,
+`end(id, { data })`. `template` may also be an inline design object. The start
+result carries `iosTargets` and an `iosWarning` explaining a 0 iOS delivery.
+
+### Plain (your own iOS widget)
 
 ```ts
 await nexus.liveActivities

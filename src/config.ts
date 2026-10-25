@@ -1,3 +1,5 @@
+import { type NexusService, resolveSwitches } from './switches';
+
 /** Configuration for {@link Nexus.init}. */
 export interface NexusConfig {
   /** Tenant API key (`nxs_...`). Sent as `x-api-key`, and in the socket handshake. */
@@ -41,9 +43,21 @@ export interface NexusConfig {
   replayFlushIntervalMs?: number;
   /** Custom fetch implementation (defaults to global `fetch`). */
   fetch?: typeof globalThis.fetch;
+  /**
+   * Switch products off without removing their code, e.g. `{ liveActivities: false }`.
+   * On Node the `NEXUS_<SERVICE>_ENABLED` environment variables apply too — off wins.
+   * A switched-off service makes no request and never throws.
+   */
+  services?: Partial<Record<NexusService, boolean>>;
+  /** `false` switches every service off (also `NEXUS_ENABLED=false`). Default `true`. */
+  enabled?: boolean;
 }
 
-export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl' | 'appVersion' | 'fetch'>> {
+export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl' | 'appVersion' | 'fetch' | 'services' | 'enabled'>> {
+  /** Effective per-service state (config + environment, off wins). */
+  services: Record<NexusService, boolean>;
+  /** Why each switched-off service is off. */
+  servicesOffReason: Partial<Record<NexusService, string>>;
   realtimeUrl?: string;
   appVersion?: string;
   fetch: typeof globalThis.fetch;
@@ -61,7 +75,10 @@ export function resolveConfig(config: NexusConfig): ResolvedConfig {
   if (typeof fetchImpl !== 'function') {
     throw new Error('Nexus: no global `fetch` available — pass `fetch` in the config (Node < 18).');
   }
+  const switches = resolveSwitches(config.services, config.enabled);
   return {
+    services: switches.enabled,
+    servicesOffReason: switches.reason,
     apiKey: config.apiKey,
     baseUrl,
     realtimeUrl: config.realtimeUrl,

@@ -1,13 +1,21 @@
 import type { ResolvedConfig } from './config';
 import type { NexusIdentity } from './identity';
 import { NexusLog } from './logging';
+import { serviceForPath, type NexusService } from './switches';
 
 /** Thin JSON transport over the `/partner/*` endpoints. Never throws. */
 export class NexusHttp {
+  private readonly skipped = new Set<NexusService>();
+
   constructor(
     private readonly config: ResolvedConfig,
     private readonly identity: NexusIdentity,
   ) {}
+
+  /** Whether a product is switched on (see `NexusConfig.services`). */
+  enabled(service: NexusService): boolean {
+    return this.config.services[service];
+  }
 
   private headers(extra?: Record<string, string>): Record<string, string> {
     const os = this.identity.deviceContext['osType'];
@@ -27,6 +35,16 @@ export class NexusHttp {
     body: Record<string, unknown>,
     extraHeaders?: Record<string, string>,
   ): Promise<Record<string, unknown> | null> {
+    const service = serviceForPath(path);
+    if (service && !this.config.services[service]) {
+      // Switched off: no request, same as "no answer" — every caller already
+      // treats null as its neutral value. Logged once per service.
+      if (!this.skipped.has(service)) {
+        this.skipped.add(service);
+        NexusLog.info(`${service} is switched off (${this.config.servicesOffReason[service]}) — skipping its calls`);
+      }
+      return null;
+    }
     const url = `${this.config.httpBase}${path}`;
     try {
       const res = await this.config.fetch(url, {

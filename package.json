@@ -1,13 +1,13 @@
 {
   "name": "@inverge/nexus",
-  "version": "1.0.0",
-  "description": "Nexus — one JavaScript/TypeScript SDK for all Inverge Nexus services (analytics, logs, errors, feature flags, remote config, realtime, links, surveys). Works in every browser framework and in Node/Express.",
+  "version": "1.4.0",
+  "description": "Nexus \u2014 one JavaScript/TypeScript SDK for all Inverge Nexus services (analytics, logs, errors, feature flags, remote config, realtime, links, surveys). Works in every browser framework and in Node \u2014 plus Telescope request-journey tracing for every Node framework.",
   "author": "Inverge <info@inverge.net>",
   "license": "MIT",
   "homepage": "https://nexus.inverge.net",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Inverge-team/nexus-js"
+    "url": "git+https://github.com/Inverge-team/nexus-js.git"
   },
   "keywords": [
     "nexus",
@@ -39,6 +39,11 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.js",
       "require": "./dist/react.cjs"
+    },
+    "./telescope": {
+      "types": "./dist/telescope/index.d.ts",
+      "import": "./dist/telescope/index.js",
+      "require": "./dist/telescope/index.cjs"
     }
   },
   "scripts": {

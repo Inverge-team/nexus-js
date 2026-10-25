@@ -38,6 +38,7 @@ export class NexusLogs {
   }
 
   log(level: LogLevel, message: string, options?: LogOptions): void {
+    if (!this.cfg.services.logs) return; // switched off — don't even buffer
     this.queue.add({
       level,
       message,
