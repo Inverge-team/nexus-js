@@ -107,10 +107,14 @@ jobs:
           fetch-depth: 0
 
       # Trusted publishing needs npm >= 11.5.1, which Node 24 ships.
+      # No `registry-url` on purpose: it writes an .npmrc with a placeholder
+      # NODE_AUTH_TOKEN, and when the OIDC exchange fails npm silently falls back
+      # to that token and the registry answers a misleading 404. Without it a
+      # failed exchange surfaces as ENEEDAUTH. npm's default registry is
+      # registry.npmjs.org.
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-          registry-url: https://registry.npmjs.org
           cache: npm
 
       - name: Make sure npm supports trusted publishing
@@ -143,7 +147,9 @@ jobs:
           # `npm install @inverge/nexus` resolves to.
           TAG_ARG=""
           if [ "$PRERELEASE" = "true" ]; then TAG_ARG="--tag next"; fi
-          npm publish "./artifacts/inverge-nexus-$VERSION.tgz" --access public $TAG_ARG
+          # --loglevel verbose prints npm's `oidc` lines: whether the trusted-publishing
+          # exchange ran and, if not, why.
+          npm publish "./artifacts/inverge-nexus-$VERSION.tgz" --access public --loglevel verbose $TAG_ARG
 
       - name: Tag and create the GitHub Release
         env:
