@@ -1,0 +1,177 @@
+name: Release
+
+# Merging dev into main publishes whatever version package.json declares.
+# The release ritual is therefore: bump the version on dev, merge to main.
+#
+# Re-running on a commit to main that did not change the version is harmless — the
+# workflow notices the version is already on npm and skips the publish rather than
+# failing, because a version on npm can never be replaced.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Two overlapping publishes of the same version would race on the tag and on npm.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Read the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      already: ${{ steps.published.outputs.already }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read version from package.json."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          case "$VERSION" in
+            *-*) echo "prerelease=true"  >> "$GITHUB_OUTPUT" ;;
+            *)   echo "prerelease=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "Releasing $VERSION"
+
+      - name: Has this version already been published?
+        id: published
+        run: |
+          VERSION='${{ steps.version.outputs.version }}'
+          if npm view "@inverge/nexus@$VERSION" version >/dev/null 2>&1; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::@inverge/nexus $VERSION is already on npm — skipping the publish."
+            echo "A published version can never be replaced. Bump the version on dev to release again."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Nothing untested gets published. The tests import ../dist, so each Node builds
+  # first — that also proves the build itself works on every supported runtime.
+  test:
+    name: Test (Node ${{ matrix.node }})
+    needs: version
+    if: needs.version.outputs.already == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        node: ["18", "20", "22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+
+  # Trusted Publishing (OIDC): npm trusts this workflow + environment, so there is
+  # no NPM_TOKEN to leak or rotate, and every version gets a provenance
+  # attestation linking it to the commit that built it.
+  publish:
+    name: Publish to npm
+    needs: [version, test]
+    if: needs.version.outputs.already == 'false'
+    runs-on: ubuntu-latest
+
+    # Must match the environment name configured on the npm trusted publisher.
+    # It is also where you add required reviewers if you later want a human to
+    # approve each publish.
+    environment:
+      name: release
+      url: https://www.npmjs.com/package/@inverge/nexus/v/${{ needs.version.outputs.version }}
+
+    permissions:
+      contents: write     # create the tag and the GitHub Release
+      id-token: write     # OIDC for npm trusted publishing + provenance
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Trusted publishing needs npm >= 11.5.1, which Node 24 ships.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Make sure npm supports trusted publishing
+        run: |
+          npm --version
+          npm install -g npm@latest
+          npm --version
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Pack
+        run: |
+          mkdir -p artifacts
+          npm pack --pack-destination artifacts
+          ls artifacts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-${{ needs.version.outputs.version }}
+          path: artifacts/*.tgz
+          if-no-files-found: error
+
+      - name: Publish
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          # A pre-release must never become `latest` — that is what a bare
+          # `npm install @inverge/nexus` resolves to.
+          TAG_ARG=""
+          if [ "$PRERELEASE" = "true" ]; then TAG_ARG="--tag next"; fi
+          npm publish "artifacts/inverge-nexus-$VERSION.tgz" --access public $TAG_ARG
+
+      - name: Tag and create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          TAG="v$VERSION"
+          if git rev-parse "$TAG" >/dev/null 2>&1 || gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::$TAG already exists — leaving it alone."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Nexus JavaScript SDK $VERSION"
+          git push origin "$TAG"
+
+          {
+            printf 'Published to npm: https://www.npmjs.com/package/@inverge/nexus/v/%s\n\n' "$VERSION"
+            printf '```bash\nnpm install @inverge/nexus@%s\n```\n\n' "$VERSION"
+            printf 'See [CHANGELOG.md](https://github.com/Inverge-team/nexus-js/blob/main/CHANGELOG.md).\n'
+          } > release-notes.md
+
+          FLAG=""
+          if [ "$PRERELEASE" = "true" ]; then FLAG="--prerelease"; fi
+
+          gh release create "$TAG" $FLAG \
+            --title "Nexus JavaScript SDK $VERSION" \
+            --notes-file release-notes.md \
+            artifacts/*.tgz
