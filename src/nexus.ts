@@ -17,6 +17,7 @@ import { NexusReplay } from './services/replay';
 import { NexusPush } from './services/push';
 import { NexusInApp } from './services/inapp';
 import { NexusLiveActivities } from './services/live-activities';
+import { NexusShield } from './services/shield';
 
 /**
  * The Nexus umbrella SDK — one entry point for every service, correlated to a
@@ -49,6 +50,8 @@ export class Nexus {
   readonly push: NexusPush;
   readonly inApp: NexusInApp;
   readonly liveActivities: NexusLiveActivities;
+  /** App & device integrity: browser tokens, server-side verify. */
+  readonly shield: NexusShield;
 
   private disposeHooks: Array<() => void> = [];
 
@@ -77,6 +80,7 @@ export class Nexus {
     this.push = new NexusPush(this.http, this.identity);
     this.inApp = new NexusInApp(this.http, this.identity);
     this.liveActivities = new NexusLiveActivities(this.http, this.identity);
+    this.shield = new NexusShield(this.http, this.config, this.config.shield);
   }
 
   /** The app-wide instance. Throws if {@link init} hasn't run. */
@@ -119,6 +123,7 @@ export class Nexus {
     if (this.config.remoteConfigRealtime && on.remoteConfig && on.realtime) {
       void this.realtime.connect().then(() => this.remoteConfig.subscribeRealtime(this.realtime));
     }
+    if (this.config.shield && on.shield) this.shield.start();
     this.installLifecycle();
     NexusLog.info('ready');
   }
@@ -168,6 +173,7 @@ export class Nexus {
     this.events.dispose();
     this.logs.dispose();
     this.replay.dispose();
+    this.shield.dispose();
     this.realtime.disconnect();
     if (Nexus._instance === this) Nexus._instance = null;
   }

@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { hostname } from 'node:os';
 
 import { resolveSwitches } from '../switches';
-import { globMatch, Redactor } from './redact';
+import { globMatch, Redactor, statusMatch } from './redact';
 
 /** The entry vocabulary — identical across every Nexus SDK. */
 export type EntryType =
@@ -37,6 +37,12 @@ export interface TelescopeOptions {
   /** null = the console's sample rate. Failed/slow/monitored work is always kept. */
   sampleRate?: number | null;
   ignorePaths?: string[];
+  /**
+   * Requests answered with one of these statuses are never sent, with every
+   * entry they recorded: `200`, `2xx` or `301-304`. Merged with the console's
+   * list. Default: `NEXUS_TELESCOPE_IGNORE_STATUSES` (comma separated).
+   */
+  ignoreStatuses?: string[];
   ignoreTypes?: EntryType[];
   redactKeys?: string[];
   /** Record response bodies (JSON is parsed). Default true. */
@@ -99,6 +105,7 @@ interface RemoteConfig {
   sampleRate?: number;
   slowRequestMs?: number;
   ignorePaths?: string[];
+  ignoreStatuses?: string[];
   ignoreTypes?: string[];
   redactKeys?: string[];
   monitoredTags?: string[];
@@ -182,6 +189,7 @@ export class Recorder {
       release: opts.release ?? process.env.NEXUS_RELEASE ?? process.env.npm_package_version,
       sampleRate: opts.sampleRate ?? (process.env.NEXUS_TELESCOPE_SAMPLE_RATE ? Number(process.env.NEXUS_TELESCOPE_SAMPLE_RATE) : null),
       ignorePaths: opts.ignorePaths ?? ['/health*', '/healthz', '/favicon.ico', '/_next/static/*'],
+      ignoreStatuses: opts.ignoreStatuses ?? (process.env.NEXUS_TELESCOPE_IGNORE_STATUSES ?? '').split(',').map((s) => s.trim()).filter(Boolean),
       ignoreTypes: opts.ignoreTypes ?? [],
       redactKeys: opts.redactKeys ?? [],
       captureBodies: opts.captureBodies ?? true,
@@ -214,6 +222,11 @@ export class Recorder {
 
   ignoresPath(path: string): boolean {
     return [...this.options.ignorePaths, ...(this.remote.ignorePaths ?? [])].some((g) => globMatch(g, path));
+  }
+
+  /** Whether a response status is ignored (`200`, `2xx`, `301-304`), locally or from the console. */
+  ignoresStatus(status: string | number): boolean {
+    return [...this.options.ignoreStatuses, ...(this.remote.ignoreStatuses ?? [])].some((p) => statusMatch(p, String(status)));
   }
 
   redactor(): Redactor {
@@ -268,7 +281,11 @@ export class Recorder {
       batch.content = { ...batch.content, ...this.redactor().redact(content) };
       if (status !== undefined) batch.status = status;
       if (name !== undefined) batch.name = name;
-      if (this.keep(batch)) this.outbox.push(this.wire(batch));
+      // An ignored response status drops the request with every entry, before
+      // anything leaves the app.
+      const responseStatus = batch.status ?? (batch.content.responseStatus != null ? String(batch.content.responseStatus) : undefined);
+      const ignored = batch.type === 'request' && responseStatus !== undefined && this.ignoresStatus(responseStatus);
+      if (!ignored && this.keep(batch)) this.outbox.push(this.wire(batch));
       this.schedule();
       if (this.outbox.length >= 50) void this.flush();
     } catch (e) {
