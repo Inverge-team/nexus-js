@@ -143,7 +143,7 @@ jobs:
           # `npm install @inverge/nexus` resolves to.
           TAG_ARG=""
           if [ "$PRERELEASE" = "true" ]; then TAG_ARG="--tag next"; fi
-          npm publish "artifacts/inverge-nexus-$VERSION.tgz" --access public $TAG_ARG
+          npm publish "./artifacts/inverge-nexus-$VERSION.tgz" --access public $TAG_ARG
 
       - name: Tag and create the GitHub Release
         env:
