@@ -1,3 +1,4 @@
+import type { ShieldConfig } from './services/shield';
 import { type NexusService, resolveSwitches } from './switches';
 
 /** Configuration for {@link Nexus.init}. */
@@ -51,9 +52,14 @@ export interface NexusConfig {
   services?: Partial<Record<NexusService, boolean>>;
   /** `false` switches every service off (also `NEXUS_ENABLED=false`). Default `true`. */
   enabled?: boolean;
+  /**
+   * Browser: turn on Nexus Shield (device-bound integrity tokens) — e.g.
+   * `{ app: 'web:checkout' }`. Server-side `nexus.shield.verify()` needs nothing here.
+   */
+  shield?: ShieldConfig;
 }
 
-export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl' | 'appVersion' | 'fetch' | 'services' | 'enabled'>> {
+export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl' | 'appVersion' | 'fetch' | 'services' | 'enabled' | 'shield'>> {
   /** Effective per-service state (config + environment, off wins). */
   services: Record<NexusService, boolean>;
   /** Why each switched-off service is off. */
@@ -61,6 +67,7 @@ export interface ResolvedConfig extends Required<Omit<NexusConfig, 'realtimeUrl'
   realtimeUrl?: string;
   appVersion?: string;
   fetch: typeof globalThis.fetch;
+  shield?: ShieldConfig;
   httpBase: string;
   socketBase: string;
 }
@@ -99,6 +106,7 @@ export function resolveConfig(config: NexusConfig): ResolvedConfig {
     replayMaskTextClass: config.replayMaskTextClass ?? REPLAY_MASK_CLASS,
     replayFlushIntervalMs: config.replayFlushIntervalMs ?? 5000,
     fetch: fetchImpl.bind(globalThis),
+    shield: config.shield,
     httpBase: baseUrl,
     socketBase: (config.realtimeUrl ?? baseUrl).replace(/\/+$/, ''),
   };

@@ -66,4 +66,37 @@ export class NexusHttp {
       return null;
     }
   }
+
+  /**
+   * POST returning the status and decoded body for ANY response (callers that
+   * need the server's error code). Null only on a network failure or when the
+   * service is switched off.
+   */
+  async postRaw(
+    path: string,
+    body: Record<string, unknown>,
+    extraHeaders?: Record<string, string>,
+  ): Promise<{ status: number; body: Record<string, unknown> | null } | null> {
+    const service = serviceForPath(path);
+    if (service && !this.config.services[service]) return null;
+    try {
+      const res = await this.config.fetch(`${this.config.httpBase}${path}`, {
+        method: 'POST',
+        headers: this.headers(extraHeaders),
+        body: JSON.stringify(body),
+      });
+      const text = await res.text();
+      let decoded: unknown = null;
+      try {
+        decoded = text ? JSON.parse(text) : null;
+      } catch {
+        decoded = null;
+      }
+      if (!res.ok) NexusLog.warn(`← ${res.status} POST ${path}`);
+      return { status: res.status, body: typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>) : null };
+    } catch (e) {
+      NexusLog.error(`POST ${path} failed`, e);
+      return null;
+    }
+  }
 }

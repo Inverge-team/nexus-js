@@ -30,4 +30,13 @@ export {
   type LiveActivityData,
   type LiveActivityTemplateStartOptions,
 } from './services/live-activities';
+export {
+  NexusShield,
+  type ShieldConfig,
+  type ShieldToken,
+  type ShieldVerdict,
+  type ShieldVerifyInput,
+} from './services/shield';
+/** @internal test hooks — not part of the public API. */
+export { sha256Head as __shieldSha256Head, solvePow as __shieldSolvePow } from './services/shield';
 export { SERVICE_ENV, type NexusService } from './switches';

@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.5.0
+
+- **Nexus Shield** — app & device integrity.
+  - **Browser:** `Nexus.init({ ..., shield: { app: 'web:checkout' } })` obtains a
+    device-bound token: a NON-EXTRACTABLE WebCrypto P-256 key (kept in
+    IndexedDB) plus Cloudflare Turnstile (bound through `cData`), reCAPTCHA v3
+    or proof-of-work — whichever the app is configured for in the console.
+    `nexus.shield.fetch(input, init)` is `fetch` with `X-Nexus-Shield` + a
+    single-use `DPoP` proof (RFC 9449) added; `headers({ method, url, body })`
+    for other clients (a string body is bound to the proof). Tokens refresh
+    before expiry; `token()`, `current`, `onToken`, `onRefused`, `reset()`.
+    `debugToken` for local development.
+  - **Server:** `nexus.shield.verify({ token, proof, method, url, resource,
+    bodyHash })` → `{ valid, decision, mode, reason, token: { score, level,
+    … } }` — replay protection, blocked devices and the resource's policy are
+    applied by Nexus. Use a server-side key.
+  - New switch `NEXUS_SHIELD_ENABLED` / `services: { shield: false }`.
+
 ## 1.4.0
 
 - **Nexus Telescope (Node)** — new entry point `@inverge/nexus/telescope`
