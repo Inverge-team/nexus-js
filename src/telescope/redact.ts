@@ -33,6 +33,16 @@ export class Redactor {
   }
 }
 
+/** `200` (exact), `2xx` (class) or `301-304` (inclusive range) against a 3-digit status. */
+export function statusMatch(pattern: string, status: string): boolean {
+  if (!/^\d{3}$/.test(status)) return false;
+  const p = pattern.trim().toLowerCase();
+  if (/^\dxx$/.test(p)) return p[0] === status[0];
+  const range = /^(\d{3})\s*-\s*(\d{3})$/.exec(p);
+  if (range) return Number(status) >= Number(range[1]) && Number(status) <= Number(range[2]);
+  return p === status;
+}
+
 export function globMatch(glob: string, value: string): boolean {
   const re = new RegExp(`^${glob.split('*').map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`, 'i');
   return re.test(value);

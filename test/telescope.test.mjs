@@ -13,7 +13,7 @@ const fakeFetch = async (url, init) => {
   return globalThis.__realFetch(url, init);
 };
 globalThis.__realFetch = globalThis.fetch;
-const telescope = NexusTelescope.init({ apiKey: 'nxs_test', baseUrl: 'http://ingest.test', service: 'node-test', fetch: fakeFetch, flushIntervalMs: 60_000, instrument: { pg: false, mysql2: false, ioredis: false } });
+const telescope = NexusTelescope.init({ apiKey: 'nxs_test', baseUrl: 'http://ingest.test', service: 'node-test', fetch: fakeFetch, ignoreStatuses: ['418', '451-452'], flushIntervalMs: 60_000, instrument: { pg: false, mysql2: false, ioredis: false } });
 
 const listen = (handler) =>
   new Promise((resolve) => {
@@ -113,6 +113,23 @@ test('a job joins the trace of the request that queued it; failures are recorded
   assert.ok(ex.content.stack.length > 0);
   assert.equal(cmd.status, '1');
   assert.ok(cmd.entries.some((e) => e.type === 'exception'));
+  app.close();
+});
+
+test('requests answered with an ignored status are never sent', async () => {
+  reset();
+  const app = await listen((req, res) => {
+    telescope.query('select 1', [], 0.1, 'pg');
+    res.statusCode = Number(req.url.slice(1));
+    res.end('x');
+  });
+  const base = `http://127.0.0.1:${app.address().port}`;
+  for (const s of [418, 451, 452, 404]) await __realFetch(`${base}/${s}`);
+  await sleep(10);
+  await telescope.flush();
+  const statuses = batches().filter((x) => x.type === 'request').map((x) => x.content.responseStatus);
+  assert.deepEqual(statuses, [404]);
+  assert.ok(telescope.recorder.ignoresStatus(451) && !telescope.recorder.ignoresStatus('453'));
   app.close();
 });
 
