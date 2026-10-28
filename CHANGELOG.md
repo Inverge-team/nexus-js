@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.7.0
+
+- **Nexus DocStore** — the document database, as a separate tree-shakeable entry
+  `@inverge/nexus/docstore` (also `nexus.docstore({ getToken })`).
+  - `createDocStore({ apiKey, getToken })` — `getToken` returns the signed-in
+    user's JWT from your identity provider; security rules see it as `auth`.
+    Server-side only: `serviceKey` bypasses rules.
+  - Refs & queries: `collection().doc().get/set/update/delete`, `add()`,
+    `where(field, op, value)`, `or()/and()/not()/whereRelated()`, `orderBy`,
+    `limit`, keyset `startAfter(cursor)`, `select`, `expand` (relations),
+    `search` (full-text), `asOf(date)` (time travel), `withCount()`,
+    `all()` async iterator, `count()`, `aggregate({ n: count(), total: sum('x') }, { groupBy })`.
+  - Field values: `increment`, `multiply`, `minimum/maximum`, `arrayUnion`,
+    `arrayRemove`, `arrayPush(…, { keepLast })`, `serverTimestamp`,
+    `deleteField`, `mergeField` — applied atomically on the server.
+  - `batch()` (atomic, ≤500 writes) and `runTransaction(fn)` — optimistic:
+    reads record versions, writes carry them, a race retries `fn`.
+  - `ifVersion` preconditions, `history()` / `restore(version)` per document.
+  - Live: `query.onSnapshot`, `doc.onSnapshot`, `query.onAggregate` (live
+    count/sum/avg with group-by) over one shared socket (`socket.io-client`
+    peer); the end-user token is refreshed in place before it expires.
+  - **Offline / local-first:** `db.offline({ collections, storage })` — reads
+    and writes hit the local cache (IndexedDB in browsers, `memoryStorage()` or
+    your own `OfflineStorage`), an outbox syncs in the background with a
+    hybrid logical clock per field, so concurrent offline edits to different
+    fields both survive. Local queries evaluate with the server's semantics.
+    `onConflict` reports writes the server rejected, parked or refused.
+  - Errors are thrown as `DocStoreError` (`code`, `status`, `details`,
+    `isPreconditionFailed`) — unlike telemetry services, a database must say
+    why a call failed. Switched off (`NEXUS_DOCSTORE_ENABLED=false` /
+    `services.docstore`) calls throw `service_disabled` without a request.
+
 ## 1.6.0
 
 - **Telescope: ignore response statuses.** `ignoreStatuses: ['200', '3xx',

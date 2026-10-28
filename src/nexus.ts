@@ -1,4 +1,6 @@
 import { type NexusConfig, type ResolvedConfig, resolveConfig } from './config';
+import { createDocStore, type NexusDocStore } from './docstore';
+import type { DocStoreOptions } from './docstore/client';
 import { NexusIdentity } from './identity';
 import { NexusHttp } from './http';
 import { NexusLog } from './logging';
@@ -160,6 +162,18 @@ export class Nexus {
   }
   get sessionKey(): string {
     return this.identity.sessionKey;
+  }
+
+  /**
+   * Nexus DocStore with this client's API key and base URL. Pass `getToken`
+   * for the signed-in end user (rules see it as `auth`), or — server-side
+   * only — a `serviceKey`. Each call returns a new client; keep one around.
+   */
+  docstore(opts: Omit<DocStoreOptions, 'apiKey' | 'baseUrl' | 'realtimeUrl' | 'fetch'> = {}): NexusDocStore {
+    return createDocStore(
+      { apiKey: this.config.apiKey, baseUrl: this.config.httpBase, realtimeUrl: this.config.socketBase, fetch: this.config.fetch, ...opts },
+      () => this.config.services.docstore,
+    );
   }
 
   /** Flush all batched telemetry now. */

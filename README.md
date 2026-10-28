@@ -36,6 +36,7 @@ on the documentation site:
 - **[Shield](https://docs.inverge.net/products/shield/web)** — app and device integrity checks for requests to your backend.
 - **[Telescope](https://docs.inverge.net/products/telescope/node)** (Node) — request-journey tracing: requests, outgoing calls, queries,
   logs and exceptions on one timeline, with N+1, duplicate and slow queries flagged.
+- **[DocStore](https://docs.inverge.net/sdks/javascript/reference/docstore)** — the document database (`@inverge/nexus/docstore`): queries, live queries and aggregates, offline-first sync.
 
 ## Links
 
