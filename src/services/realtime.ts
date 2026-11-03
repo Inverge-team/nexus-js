@@ -79,7 +79,7 @@ export class NexusRealtime {
 
   /** Join a room. Idempotent — a room already joined this session is not
    *  re-emitted (the reconnect handler re-joins it automatically). Returns the
-   *  server ack (`{ ok, room, related }`), or a synthetic ack when already joined. */
+   *  server ack (`{ ok, room }`), or a synthetic ack when already joined. */
   async join(room: string): Promise<unknown> {
     if (this.rooms.has(room)) return { ok: true, room, already: true };
     this.rooms.add(room);
