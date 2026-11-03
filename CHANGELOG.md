@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.8.0
+
+- **Messaging** (Node only) — a separate entry `@inverge/nexus/messaging`, kept
+  out of the browser bundle because sending spends the project's wallet.
+  - `new NexusMessaging({ apiKey })` → `send({ channel, to, body | template |
+    content, … })`, `get(id)`, `events(id)`, `uploadMedia()` (WhatsApp) and
+    `uploadTelegramFile()`; OTP codes over Telegram with SMS fallback via
+    `verifications.start/check/get/cancel`.
+  - Every send carries an `Idempotency-Key` (generated, or `idempotencyKey`), so
+    it is retried safely on a network error, 429 or 5xx; verification
+    start/check are never retried.
+  - Throws `MessagingError` (`code`, `status`, `details`) — a failed send must
+    not look like a sent one. New switch `NEXUS_MESSAGING_ENABLED`.
+
 ## 1.7.0
 
 - **Nexus DocStore** — the document database, as a separate tree-shakeable entry
