@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.1
+
+- `verifications.start({ channels, whatsappTemplate, whatsappLanguage })`: codes now go
+  out on WhatsApp first, then Telegram (the API's new default); `channels` sets the order.
+
 ## 1.8.0
 
 - **Messaging** (Node only) — a separate entry `@inverge/nexus/messaging`, kept

@@ -1,6 +1,6 @@
 {
   "name": "@inverge/nexus",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Nexus — one JavaScript/TypeScript SDK for all Inverge Nexus services (analytics, logs, errors, feature flags, remote config, realtime, links, surveys, DocStore document database). Works in every browser framework and in Node — plus Telescope request-journey tracing for every Node framework.",
   "author": "Inverge <info@inverge.net>",
   "license": "MIT",

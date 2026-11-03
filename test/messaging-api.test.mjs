@@ -116,6 +116,12 @@ test('verifications: start, check, cancel — start/check never retried', async 
   assert.equal(fetch.calls[2].url, 'https://api.test/partner/messaging/verifications/ver_1/cancel');
 });
 
+test('verifications.start carries the channel plan and template', async () => {
+  const fetch = fakeFetch([201, { id: 'ver_2' }]);
+  await client(fetch).verifications.start({ to: '+9647501234567', channels: ['telegram', 'whatsapp'], whatsappTemplate: 'acme_login', whatsappLanguage: 'ar' });
+  assert.deepEqual(JSON.parse(fetch.calls[0].body), { to: '+9647501234567', channels: ['telegram', 'whatsapp'], whatsappTemplate: 'acme_login', whatsappLanguage: 'ar' });
+});
+
 test('a network failure surfaces as MessagingError("network")', async () => {
   const fetch = fakeFetch(new Error('ECONNREFUSED'));
   await assert.rejects(client(fetch, { maxRetries: 0 }).get('m'), (e) => e.code === 'network');
