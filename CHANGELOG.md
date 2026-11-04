@@ -3,7 +3,8 @@
 ## 1.8.1
 
 - `verifications.start({ channels, whatsappTemplate, whatsappLanguage })`: codes now go
-  out on WhatsApp first, then Telegram (the API's new default); `channels` sets the order.
+  out on the cheaper of WhatsApp and Telegram for the number first (the API's
+  new default); `channels` sets the order.
 
 ## 1.8.0
 
