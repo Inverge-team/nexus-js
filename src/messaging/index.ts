@@ -15,7 +15,7 @@
  * Server-only, and a separate entry for that reason: sending spends the
  * project's wallet, so the API key must never ship in a browser bundle.
  *
- * Verification codes go out on WhatsApp first, then Telegram.
+ * Verification codes go out on WhatsApp or Telegram, whichever is cheaper for the number.
  *
  * Send-only: an API key sends messages, reads a sent message's status and
  * delivery timeline, uploads a file to attach, and runs OTP verifications.
@@ -141,8 +141,9 @@ export interface StartVerification {
   /** E.164. */
   to: string;
   /**
-   * Channels to try, in order. Default: WhatsApp, then Telegram — the code moves
-   * on when a channel refuses it or hasn't delivered it within `fallbackAfter`.
+   * Channels to try, in order. Default: WhatsApp and Telegram, the cheaper for
+   * the number first — the code moves on when a channel refuses it or hasn't
+   * delivered it within `fallbackAfter`.
    */
   channels?: ('whatsapp' | 'telegram' | 'sms')[];
   /** WhatsApp authentication template to send (default: the platform's). */
@@ -244,7 +245,7 @@ export class NexusMessaging {
   private readonly fetchFn: typeof fetch;
   private readonly on: boolean;
 
-  /** OTP codes on WhatsApp, then Telegram. */
+  /** OTP codes on WhatsApp or Telegram, cheapest first. */
   readonly verifications: {
     start(v: StartVerification): Promise<Verification | null>;
     check(id: string, code: string): Promise<VerificationCheck | null>;
