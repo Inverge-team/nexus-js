@@ -21,6 +21,9 @@ export {
   type PushOptions,
   type PushActionButton,
   type PushSendResult,
+  type PushScheduledSend,
+  type PushSendAt,
+  type PushTranslations,
 } from './services/push';
 export { NexusInApp, type NexusInAppMessage } from './services/inapp';
 export {
