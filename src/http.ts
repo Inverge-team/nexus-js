@@ -30,9 +30,23 @@ export class NexusHttp {
   }
 
   /** POST JSON to a `/partner/...` path. Returns the decoded body or null. */
-  async post(
+  post(
     path: string,
     body: Record<string, unknown>,
+    extraHeaders?: Record<string, string>,
+  ): Promise<Record<string, unknown> | null> {
+    return this.request('POST', path, body, extraHeaders);
+  }
+
+  /** GET a `/partner/...` path. Returns the decoded body or null. */
+  get(path: string, extraHeaders?: Record<string, string>): Promise<Record<string, unknown> | null> {
+    return this.request('GET', path, undefined, extraHeaders);
+  }
+
+  private async request(
+    method: 'GET' | 'POST',
+    path: string,
+    body: Record<string, unknown> | undefined,
     extraHeaders?: Record<string, string>,
   ): Promise<Record<string, unknown> | null> {
     const service = serviceForPath(path);
@@ -48,21 +62,21 @@ export class NexusHttp {
     const url = `${this.config.httpBase}${path}`;
     try {
       const res = await this.config.fetch(url, {
-        method: 'POST',
+        method,
         headers: this.headers(extraHeaders),
-        body: JSON.stringify(body),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       if (res.ok) {
-        NexusLog.debug(`← ${res.status} POST ${path}`);
+        NexusLog.debug(`← ${res.status} ${method} ${path}`);
         const text = await res.text();
         if (!text) return {};
         const decoded = JSON.parse(text);
         return typeof decoded === 'object' && decoded !== null ? decoded : { data: decoded };
       }
-      NexusLog.warn(`← ${res.status} POST ${path}`);
+      NexusLog.warn(`← ${res.status} ${method} ${path}`);
       return null;
     } catch (e) {
-      NexusLog.error(`POST ${path} failed`, e);
+      NexusLog.error(`${method} ${path} failed`, e);
       return null;
     }
   }

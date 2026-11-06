@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.9.0
+
+- **Scheduled push**: `sendAt(at)` on the push builder (a `Date`, epoch ms or an
+  ISO-8601 string with an offset; `null` clears it), `schedule(at)` shorthand,
+  `name(label)`, and `push.schedule(ids, message, at)`. `push.scheduled(id)` and
+  `push.cancelScheduled(id)` check on or cancel one. New type `PushScheduledSend`.
+- **`when()` / `unless()`** on the push builder (Laravel-style) to branch without
+  leaving the chain; a function value is evaluated lazily.
+- `image()` / `body()` / `data()` accept `null` (left unset), and empty ids in
+  `toUsers()` / `toSegments()` are ignored.
+- `toJSON()` returns the assembled payload without sending.
+- **Per-language push**: `title()` / `body()` (and `push.send()`'s `title` / `body`)
+  take `{ en: '…', ar: '…' }`; each device gets its language's, empty translations
+  fall back to the default language, set with `defaultLanguage(lang)` (else `en`,
+  else the first given). New type `PushTranslations`.
+
 ## 1.8.1
 
 - `verifications.start({ channels, whatsappTemplate, whatsappLanguage })`: codes now go
