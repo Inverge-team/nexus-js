@@ -69,7 +69,15 @@ export interface SendMessage {
   body?: string;
   /** Structured content, validated per channel. */
   content?: Record<string, unknown>;
-  /** A registered sender (SMS sender ID, Telegram bot `@username`). Optional on WhatsApp. */
+  /**
+   * Which of your connected accounts sends it. Omit for the channel's default.
+   * - WhatsApp: the number, in any format (`+964 750 123 4567`, `+9647501234567`), or its phone number id
+   * - Telegram: the bot's `@username`
+   * - Messenger: the Facebook Page id or name
+   * - Instagram: the account id or `@username`
+   * - Viber: the bot's name or URI
+   * - SMS: an approved sender ID
+   */
   sender?: string;
   /** An approved template by name (WhatsApp) or a stored template key. */
   template?: string;
