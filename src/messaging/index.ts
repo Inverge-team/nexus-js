@@ -158,6 +158,8 @@ export interface StartVerification {
   whatsappTemplate?: string;
   /** Its language, e.g. `en_US`, `ar`. */
   whatsappLanguage?: string;
+  /** Which of your WhatsApp numbers sends the code: the number in any format, or its phone number id. Default: the project's default number. */
+  whatsappSender?: string;
   codeLength?: number;
   /** Seconds the code is valid. */
   ttl?: number;
