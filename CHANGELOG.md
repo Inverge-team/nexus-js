@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.12.0
+
+- **Live Activities are delivered asynchronously.** `start` / `update` / `end`
+  are accepted at once (HTTP 202) and Nexus delivers them in the background —
+  with per-push timeouts, retries and strict order per activity — so a call
+  never waits on Apple or Google (and no longer times out when they're slow).
+  They now return `{ accepted, jobId, activityId, status }` instead of the device
+  counts; the new `liveActivities.job(jobId)` returns the outcome (`status`,
+  `attempts`, `result: { ios, android, … }`, `lastError`). New types
+  `LiveActivityJob`, `LiveActivityDelivery`, `LiveActivityJobStatus`.
+- A repeated `start` for an activity a user already has now updates it instead
+  of starting a second one, so retrying a start is safe.
+
 ## 1.11.0
 
 - **Billing suspension stops all calls.** After one `402 billing_suspended`, the

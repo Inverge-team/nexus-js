@@ -43,7 +43,7 @@ test('NEXUS_<SERVICE>_ENABLED=false switches one service off: no request, no thr
     assert.equal(n.enabled('push'), false);
 
     const la = await n.liveActivities.template('order_tracking', 'o1').step('pending').toUser('u').start();
-    assert.deepEqual(la, { ios: 0, android: 0 }); // the neutral result
+    assert.deepEqual(la, { accepted: false, jobId: null, activityId: 'o1' }); // the neutral result: nothing queued
     await n.liveActivities.activity('o1').step('arrived').update();
     await n.push.notification().title('Hi').toUser('u').send();
     assert.equal(fetch.calls.length, 0);

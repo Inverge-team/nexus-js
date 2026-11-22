@@ -30,6 +30,9 @@ export {
   NexusLiveActivities,
   NexusLiveActivityBuilder,
   type LiveActivityResult,
+  type LiveActivityDelivery,
+  type LiveActivityJob,
+  type LiveActivityJobStatus,
   type LiveActivityData,
   type LiveActivityTemplateStartOptions,
 } from './services/live-activities';

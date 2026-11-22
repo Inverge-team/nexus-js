@@ -69,7 +69,7 @@ test('inapp active + click', async () => {
 });
 
 test('live activity builder start/update/end', async () => {
-  const fetch = fakeFetch({ ios: 1, android: 1 }, {}, {});
+  const fetch = fakeFetch({ accepted: true, jobId: 'j1', activityId: 'order_42', status: 'pending' }, {}, {});
   const n = boot(fetch);
 
   const start = await n.liveActivities
@@ -80,7 +80,8 @@ test('live activity builder start/update/end', async () => {
     .toUser('u_1')
     .priority(10)
     .start();
-  assert.equal(start.ios, 1);
+  assert.equal(start.accepted, true); // queued — delivered asynchronously
+  assert.equal(start.jobId, 'j1');
   let call = fetch.calls.at(-1);
   assert.ok(call.url.endsWith('/partner/live-activities/start'));
   assert.equal(call.body.activityType, 'DeliveryAttributes');
@@ -107,7 +108,7 @@ test('live activity builder start requires type', async () => {
 });
 
 test('templated live activity: start by key, partial update, final end', async () => {
-  const fetch = fakeFetch({ ios: 1, android: 2, iosTargets: 1 }, {}, {}, {});
+  const fetch = fakeFetch({ accepted: true, jobId: 'j2', activityId: 'order_42', status: 'pending' }, {}, {}, {});
   const n = boot(fetch);
 
   const res = await n.liveActivities
@@ -120,8 +121,7 @@ test('templated live activity: start by key, partial update, final end', async (
     .lang('ckb')
     .alert('Order received', '500 L')
     .start();
-  assert.equal(res.android, 2);
-  assert.equal(res.iosTargets, 1);
+  assert.equal(res.jobId, 'j2');
   let call = fetch.calls.at(-1);
   assert.ok(call.url.endsWith('/partner/live-activities/start'));
   assert.equal(call.body.template, 'order_tracking');
@@ -176,5 +176,17 @@ test('plain live activity path is unchanged', async () => {
 test('start needs a template or a type', async () => {
   const n = boot(fakeFetch());
   await assert.rejects(() => n.liveActivities.activity('o3').step('a').start(), /template/);
+  n.dispose();
+});
+
+test('live activity job(): reads the outcome of a queued start', async () => {
+  const fetch = fakeFetch({ jobId: 'j1', status: 'done', result: { ios: 1, android: 0 } });
+  const n = boot(fetch);
+  const job = await n.liveActivities.job('j1');
+  assert.equal(job.status, 'done');
+  assert.equal(job.result.ios, 1);
+  const call = fetch.calls.at(-1);
+  assert.ok(call.url.endsWith('/partner/live-activities/jobs/j1'));
+  assert.equal(call.method ?? 'GET', 'GET');
   n.dispose();
 });
