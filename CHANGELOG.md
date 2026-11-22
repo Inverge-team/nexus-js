@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.11.0
+
+- **Billing suspension stops all calls.** After one `402 billing_suspended`, the
+  SDK sends nothing for the pause the API asks for (`details.retryAfterSeconds`,
+  default 5 minutes): telemetry is dropped and calls return `null` (DocStore and
+  Push Auth throw a `billing_suspended` error) without a request. When the pause
+  ends one probe goes out; a refusal starts a new pause, success resumes. The
+  pause is shared by every client in the process and, in a browser, across page
+  loads (localStorage). The realtime socket stops reconnecting and retries when
+  the pause ends. `resetBillingSuspension()` lifts it at once.
+- A `402 insufficient_balance` (empty Messaging wallet) is not a suspension, and
+  Messaging is never paused.
+
 ## 1.9.0
 
 - **Scheduled push**: `sendAt(at)` on the push builder (a `Date`, epoch ms or an

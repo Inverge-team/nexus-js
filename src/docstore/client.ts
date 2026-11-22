@@ -1,4 +1,5 @@
 import type { Filter, JsonObject, SortKey } from './core';
+import { beginRequest, pausedFor, recordResponse, suspendedMessage, suspensionKey } from '../suspension';
 
 /** Thrown by every DocStore call that fails. Unlike telemetry services,
  *  a database must tell you WHY a read or write failed. */
@@ -81,7 +82,10 @@ export class DocStoreHttp {
   constructor(readonly opts: DocStoreOptions, private readonly enabled: () => boolean = () => true) {
     this.base = `${(opts.baseUrl ?? 'https://services.inverge.net').replace(/\/+$/, '')}/partner/docstore`;
     this.fetchFn = opts.fetch ?? globalThis.fetch.bind(globalThis);
+    this.suspension = suspensionKey(opts.baseUrl ?? 'https://services.inverge.net', opts.apiKey);
   }
+
+  private readonly suspension: string;
 
   async token(forceRefresh = false): Promise<string | null> {
     if (!this.opts.getToken) return null;
@@ -96,6 +100,10 @@ export class DocStoreHttp {
       for (const item of Array.isArray(v) ? v : [v]) qs.append(k, item);
     }
     const url = `${this.base}${path}${qs.toString() ? `?${qs}` : ''}`;
+    // Billing suspension: refuse locally, no request, until the pause ends.
+    if (!beginRequest(this.suspension, '/partner/docstore')) {
+      throw new DocStoreError(suspendedMessage(pausedFor(this.suspension)), 'billing_suspended', 402);
+    }
     const send = async (forceRefresh: boolean) => {
       const headers: Record<string, string> = { 'content-type': 'application/json', 'x-api-key': this.opts.apiKey };
       if (this.opts.serviceKey) headers['x-nexus-service-key'] = this.opts.serviceKey;
@@ -120,8 +128,10 @@ export class DocStoreHttp {
     } catch {
       json = null;
     }
+    const failure = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+    recordResponse(this.suspension, '/partner/docstore', res.status, failure?.code, failure?.details);
     if (!res.ok) {
-      const err = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+      const err = failure;
       throw new DocStoreError(err?.message ?? `DocStore ${method} ${path} → ${res.status}`, err?.code ?? `http_${res.status}`, res.status, err?.details);
     }
     return json as T;

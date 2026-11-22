@@ -2,6 +2,7 @@ import type { Socket } from 'socket.io-client';
 import type { ResolvedConfig } from '../config';
 import type { NexusIdentity } from '../identity';
 import { NexusLog } from '../logging';
+import { DEFAULT_PAUSE_SECONDS, pausedFor, recordResponse, suspensionKey } from '../suspension';
 
 export type EventHandler = (data: unknown) => void;
 
@@ -10,6 +11,8 @@ export type EventHandler = (data: unknown) => void;
 export class NexusRealtime {
   private socket: Socket | null = null;
   private connecting: Promise<void> | null = null;
+  /** Reconnect scheduled for when a billing-suspension pause ends. */
+  private resumeTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly rooms = new Set<string>();
   // One event → many handlers. socket.io keeps listeners across reconnects, so
   // handlers are attached to the socket exactly once (see openSocket).
@@ -73,8 +76,30 @@ export class NexusRealtime {
       NexusLog.info('realtime connected');
     });
     socket.on('disconnect', () => NexusLog.info('realtime disconnected'));
+    socket.on('connect_error', (err: Error & { data?: unknown }) => {
+      if (err.message !== 'billing_suspended') return;
+      // Paying the invoice is the only fix: stop socket.io's reconnect loop and
+      // try once more when the pause ends (shared with every HTTP call).
+      socket.disconnect();
+      const key = suspensionKey(this.cfg.httpBase, this.cfg.apiKey);
+      const seconds = recordResponse(key, '/partner/rooms', 402, 'billing_suspended', err.data) ?? DEFAULT_PAUSE_SECONDS;
+      NexusLog.warn(`realtime: API access is suspended for an overdue invoice — retrying in ${seconds}s`);
+      this.resumeAfter(socket, seconds * 1000);
+    });
+    socket.on('connect', () => recordResponse(suspensionKey(this.cfg.httpBase, this.cfg.apiKey), '/partner/rooms', 200));
     this.socket = socket;
-    socket.connect();
+    const wait = pausedFor(suspensionKey(this.cfg.httpBase, this.cfg.apiKey), '/partner/rooms');
+    if (wait > 0) this.resumeAfter(socket, wait);
+    else socket.connect();
+  }
+
+  private resumeAfter(socket: Socket, ms: number): void {
+    if (this.resumeTimer) clearTimeout(this.resumeTimer);
+    this.resumeTimer = setTimeout(() => {
+      this.resumeTimer = null;
+      if (this.socket === socket) socket.connect();
+    }, ms);
+    (this.resumeTimer as { unref?: () => void }).unref?.();
   }
 
   /** Join a room. Idempotent — a room already joined this session is not
@@ -129,6 +154,8 @@ export class NexusRealtime {
   }
 
   disconnect(): void {
+    if (this.resumeTimer) clearTimeout(this.resumeTimer);
+    this.resumeTimer = null;
     this.socket?.disconnect();
     this.socket = null;
   }

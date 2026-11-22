@@ -4,6 +4,7 @@ import { hostname } from 'node:os';
 
 import { resolveSwitches } from '../switches';
 import { globMatch, Redactor, statusMatch } from './redact';
+import { beginRequest, pausedFor, recordResponse, suspensionKey } from '../suspension';
 
 /** The entry vocabulary — identical across every Nexus SDK. */
 export type EntryType =
@@ -425,6 +426,11 @@ export class Recorder {
 
   async flush(): Promise<void> {
     if (!this.outbox.length || this.sending) return;
+    const suspension = suspensionKey(this.base, this.options.apiKey);
+    if (!beginRequest(suspension, '/partner/telescope')) {
+      this.outbox.length = 0; // billing suspended: drop, don't pile up
+      return;
+    }
     const batches = this.outbox.splice(0, 200);
     this.sending = true;
     const ac = new AbortController();
@@ -443,17 +449,19 @@ export class Recorder {
         }),
         signal: ac.signal,
       });
-      if (res.ok) {
-        const body = (await res.json().catch(() => null)) as { config?: RemoteConfig } | null;
-        if (body?.config) this.remote = body.config;
-      }
+      const body = (await res.json().catch(() => null)) as {
+        config?: RemoteConfig;
+        error?: { code?: unknown; details?: unknown };
+      } | null;
+      recordResponse(suspension, '/partner/telescope', res.status, body?.error?.code, body?.error?.details);
+      if (res.ok && body?.config) this.remote = body.config;
     } catch (e) {
       this.options.onError?.(e);
     } finally {
       clearTimeout(t);
       this.sending = false;
     }
-    if (this.outbox.length) void this.flush();
+    if (this.outbox.length && !pausedFor(suspension)) void this.flush();
   }
 
   private keep(b: Batch): boolean {

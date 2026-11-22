@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io-client';
 
 import type { DocData, DocStoreOptions } from './client';
+import { recordResponse, suspensionKey } from '../suspension';
 
 export type LiveChange =
   | { type: 'added'; doc: DocData; index: number }
@@ -116,6 +117,7 @@ export class DocStoreLive {
       if (err.message === 'billing_suspended') {
         // Paying the invoice is the only fix; retrying every few seconds helps nobody.
         socket.disconnect();
+        recordResponse(suspensionKey(this.opts.baseUrl ?? 'https://services.inverge.net', this.opts.apiKey), '/partner/docstore', 402, 'billing_suspended', err.data);
         this.setStatus('stopped');
         for (const s of this.subs.values()) s.handlers.onError?.('billing_suspended', 'Nexus access is suspended for unpaid invoices');
         return;
