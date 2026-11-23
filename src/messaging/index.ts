@@ -32,6 +32,9 @@ import { readFile } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 
 import { resolveSwitches } from '../switches';
+import { clientIpHeaders, forwardingFromEnv } from './client-ip';
+
+export { clientIpMiddleware, currentClientIp, runWithClientIp } from './client-ip';
 
 export class MessagingError extends Error {
   constructor(
@@ -57,6 +60,13 @@ export interface MessagingOptions {
   timeoutMs?: number;
   /** Custom fetch (tests, proxies). Default: the global one. */
   fetch?: typeof fetch;
+  /**
+   * Send the end user's IP (bound with `clientIpMiddleware()` /
+   * `runWithClientIp()`) with verification codes and OTP sends, for the
+   * per-IP rate limit. Default true; `NEXUS_FORWARD_CLIENT_IP=false` also
+   * turns it off.
+   */
+  forwardClientIp?: boolean;
 }
 
 export type Channel = 'whatsapp' | 'telegram' | 'sms' | 'messenger' | 'instagram' | (string & {});
@@ -173,6 +183,12 @@ export interface StartVerification {
   senderUsername?: string;
   maxAttempts?: number;
   metadata?: Record<string, unknown>;
+  /**
+   * Your end user's IP, for the per-IP rate limit. Omit it and the address
+   * bound to the current request (`clientIpMiddleware()` / `runWithClientIp()`)
+   * is sent.
+   */
+  clientIp?: string;
 }
 
 export interface Verification {
@@ -254,6 +270,7 @@ export class NexusMessaging {
   private readonly timeoutMs: number;
   private readonly fetchFn: typeof fetch;
   private readonly on: boolean;
+  private readonly forwardIp: boolean;
 
   /** OTP codes on WhatsApp or Telegram, cheapest first. */
   readonly verifications: {
@@ -271,6 +288,7 @@ export class NexusMessaging {
     this.timeoutMs = opts.timeoutMs ?? 15_000;
     this.fetchFn = opts.fetch ?? fetch;
     this.on = resolveSwitches(undefined, undefined).enabled.messaging;
+    this.forwardIp = (opts.forwardClientIp ?? true) && forwardingFromEnv();
 
     const v = '/partner/messaging/verifications';
     this.verifications = {
@@ -279,7 +297,13 @@ export class NexusMessaging {
       start: (s) => {
         if (!s?.to) throw new TypeError('verifications.start() requires a phone number in E.164 form.');
         const { smsFallback, ...rest } = s;
-        return this.call({ method: 'POST', path: v, json: compact({ ...rest, fallback: smsFallback ? 'sms' : undefined }), retry: false });
+        return this.call({
+          method: 'POST',
+          path: v,
+          json: compact({ ...rest, fallback: smsFallback ? 'sms' : undefined }),
+          headers: clientIpHeaders(s.clientIp, this.forwardIp),
+          retry: false,
+        });
       },
       check: (id, code) => this.call({ method: 'POST', path: `${v}/${seg(id)}/check`, json: { code: String(code) }, retry: false }),
       get: (id) => this.call({ method: 'GET', path: `${v}/${seg(id)}`, retry: true }),
@@ -302,7 +326,11 @@ export class NexusMessaging {
       path: '/partner/messaging/messages',
       json: messageBody(message),
       // Safe to retry because the key is the same on every attempt.
-      headers: { 'Idempotency-Key': message.idempotencyKey ?? `nxs-${randomUUID()}` },
+      headers: {
+        'Idempotency-Key': message.idempotencyKey ?? `nxs-${randomUUID()}`,
+        // Only an OTP picks up the request's address by itself — see client-ip.ts.
+        ...(message.messageClass === 'otp' ? clientIpHeaders(message.clientIp, this.forwardIp) : {}),
+      },
       retry: true,
     });
   }

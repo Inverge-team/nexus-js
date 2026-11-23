@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.0
+
+- **Messaging forwards your end user's IP** for the per-IP rate limit, on
+  `verifications.start()` and on `send({ messageClass: 'otp' })` (other sends
+  never carry it by themselves). Bind it per request with `clientIpMiddleware()`
+  (Express) or `runWithClientIp(req.ip, next)` (Fastify, Koa). For queued work,
+  carry `currentClientIp()` with the job and wrap the work in `runWithClientIp()`.
+  Private and proxy addresses are never sent. `clientIp` on `StartVerification`
+  overrides it; `forwardClientIp: false` or `NEXUS_FORWARD_CLIENT_IP=false`
+  turns it off.
+
 ## 1.12.0
 
 - **Live Activities are delivered asynchronously.** `start` / `update` / `end`
