@@ -30,6 +30,9 @@ export {
   NexusLiveActivities,
   NexusLiveActivityBuilder,
   type LiveActivityResult,
+  type LiveActivityDelivery,
+  type LiveActivityJob,
+  type LiveActivityJobStatus,
   type LiveActivityData,
   type LiveActivityTemplateStartOptions,
 } from './services/live-activities';
@@ -43,3 +46,4 @@ export {
 /** @internal test hooks — not part of the public API. */
 export { sha256Head as __shieldSha256Head, solvePow as __shieldSolvePow } from './services/shield';
 export { SERVICE_ENV, type NexusService } from './switches';
+export { resetSuspensions as resetBillingSuspension } from './suspension';

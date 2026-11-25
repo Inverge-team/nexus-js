@@ -1,7 +1,23 @@
 import type { NexusHttp } from '../http';
 import type { NexusIdentity } from '../identity';
 
+export type LiveActivityJobStatus = 'pending' | 'running' | 'done' | 'dead' | 'superseded';
+
+/**
+ * What start / update / end return: the request was accepted (HTTP 202) and is
+ * delivered by Nexus in the background — with retries, in order per activity.
+ * Read the outcome with {@link NexusLiveActivities.job}. `accepted: false`
+ * means nothing was sent (the service is switched off in this SDK).
+ */
 export interface LiveActivityResult {
+  accepted: boolean;
+  jobId: string | null;
+  activityId: string;
+  status?: LiveActivityJobStatus;
+}
+
+/** Devices a delivered start / update / end reached (a job's `result`). */
+export interface LiveActivityDelivery {
   ios: number;
   android: number;
   /** Start only: iOS devices registered for the activity type. */
@@ -9,6 +25,24 @@ export interface LiveActivityResult {
   /** Start only: why iOS got fewer deliveries than targets (no devices, APNs not set up, Apple's error). */
   iosWarning?: string;
 }
+
+/** The outcome of a queued start / update / end. */
+export interface LiveActivityJob {
+  jobId: string;
+  activityId: string;
+  kind: 'start' | 'update' | 'end';
+  /** pending → running → done; `dead` once Nexus gave up retrying; `superseded` = an update skipped because an end followed. */
+  status: LiveActivityJobStatus;
+  attempts: number;
+  nextAttemptAt: string | null;
+  result: LiveActivityDelivery | null;
+  lastError: string | null;
+  source: 'api' | 'console' | 'auto-end' | 'late-end';
+  createdAt: string;
+  completedAt: string | null;
+}
+
+const notSent = (activityId: string): LiveActivityResult => ({ accepted: false, jobId: null, activityId });
 
 /**
  * Data for a templated Live Activity (the design lives in a template made in
@@ -62,6 +96,12 @@ const drop = (o: Record<string, unknown>): Record<string, unknown> =>
  *
  * Plain (your own iOS widget):
  * `nexus.liveActivities.activity('DeliveryAttributes', 'order_42').status('Preparing').progress(20).toUser('u_1').start()`.
+ *
+ * start / update / end are accepted at once and delivered by Nexus in the
+ * background (retries, in order per activity) — they never wait on Apple or
+ * Google. Each returns `{ accepted, jobId, activityId, status }`; `job(jobId)`
+ * reports the outcome. A repeated start for an activity a user already has
+ * updates it instead, so retrying a start is safe.
  */
 export class NexusLiveActivities {
   constructor(
@@ -105,7 +145,7 @@ export class NexusLiveActivities {
         priority: options.priority,
       }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(activityId);
   }
 
   /** Update a templated activity with partial data (merged server-side). */
@@ -114,7 +154,7 @@ export class NexusLiveActivities {
       `/partner/live-activities/${encodeURIComponent(activityId)}/update`,
       drop({ data, staleDate: options.staleDate, priority: options.priority }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(activityId);
   }
 
   /** Start an activity (plain form). Omit `distinctIds` for a shared activity. */
@@ -136,7 +176,7 @@ export class NexusLiveActivities {
         priority: options.priority,
       }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(activityId);
   }
 
   async update(
@@ -148,7 +188,7 @@ export class NexusLiveActivities {
       `/partner/live-activities/${encodeURIComponent(activityId)}/update`,
       drop({ contentState, staleDate: options.staleDate, priority: options.priority }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(activityId);
   }
 
   /** End an activity. Templated: `data` is the final state shown before dismissal (e.g. `{ step: 'completed' }`). */
@@ -160,7 +200,12 @@ export class NexusLiveActivities {
       `/partner/live-activities/${encodeURIComponent(activityId)}/end`,
       drop({ data: options.data, contentState: options.contentState, dismissalDate: options.dismissalDate }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(activityId);
+  }
+
+  /** The outcome of a queued start / update / end (`null` when the service is switched off). */
+  async job(jobId: string): Promise<LiveActivityJob | null> {
+    return (await this.http.get(`/partner/live-activities/jobs/${encodeURIComponent(jobId)}`)) as LiveActivityJob | null;
   }
 
   /** Register an iOS push-to-start token (client-side; exposed for BYO). */
@@ -370,7 +415,7 @@ export class NexusLiveActivityBuilder {
         priority: this._priority,
       }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(this.activityId);
   }
 
   async update(): Promise<LiveActivityResult> {
@@ -378,7 +423,7 @@ export class NexusLiveActivityBuilder {
       `/partner/live-activities/${encodeURIComponent(this.activityId)}/update`,
       drop({ ...this.payload(), staleDate: this._staleDate, priority: this._priority }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(this.activityId);
   }
 
   async end(): Promise<LiveActivityResult> {
@@ -391,6 +436,6 @@ export class NexusLiveActivityBuilder {
         dismissalDate: this._dismissalDate,
       }),
     );
-    return (res as LiveActivityResult | null) ?? { ios: 0, android: 0 };
+    return (res as LiveActivityResult | null) ?? notSent(this.activityId);
   }
 }

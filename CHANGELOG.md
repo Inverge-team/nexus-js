@@ -1,5 +1,42 @@
 # Changelog
 
+## 1.13.0
+
+- **Messaging forwards your end user's IP** for the per-IP rate limit, on
+  `verifications.start()` and on `send({ messageClass: 'otp' })` (other sends
+  never carry it by themselves). Bind it per request with `clientIpMiddleware()`
+  (Express) or `runWithClientIp(req.ip, next)` (Fastify, Koa). For queued work,
+  carry `currentClientIp()` with the job and wrap the work in `runWithClientIp()`.
+  Private and proxy addresses are never sent. `clientIp` on `StartVerification`
+  overrides it; `forwardClientIp: false` or `NEXUS_FORWARD_CLIENT_IP=false`
+  turns it off.
+
+## 1.12.0
+
+- **Live Activities are delivered asynchronously.** `start` / `update` / `end`
+  are accepted at once (HTTP 202) and Nexus delivers them in the background —
+  with per-push timeouts, retries and strict order per activity — so a call
+  never waits on Apple or Google (and no longer times out when they're slow).
+  They now return `{ accepted, jobId, activityId, status }` instead of the device
+  counts; the new `liveActivities.job(jobId)` returns the outcome (`status`,
+  `attempts`, `result: { ios, android, … }`, `lastError`). New types
+  `LiveActivityJob`, `LiveActivityDelivery`, `LiveActivityJobStatus`.
+- A repeated `start` for an activity a user already has now updates it instead
+  of starting a second one, so retrying a start is safe.
+
+## 1.11.0
+
+- **Billing suspension stops all calls.** After one `402 billing_suspended`, the
+  SDK sends nothing for the pause the API asks for (`details.retryAfterSeconds`,
+  default 5 minutes): telemetry is dropped and calls return `null` (DocStore and
+  Push Auth throw a `billing_suspended` error) without a request. When the pause
+  ends one probe goes out; a refusal starts a new pause, success resumes. The
+  pause is shared by every client in the process and, in a browser, across page
+  loads (localStorage). The realtime socket stops reconnecting and retries when
+  the pause ends. `resetBillingSuspension()` lifts it at once.
+- A `402 insufficient_balance` (empty Messaging wallet) is not a suspension, and
+  Messaging is never paused.
+
 ## 1.9.0
 
 - **Scheduled push**: `sendAt(at)` on the push builder (a `Date`, epoch ms or an

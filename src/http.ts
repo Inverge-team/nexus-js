@@ -1,16 +1,61 @@
 import type { ResolvedConfig } from './config';
 import type { NexusIdentity } from './identity';
 import { NexusLog } from './logging';
+import { beginRequest, pausedFor, recordResponse, suspensionKey } from './suspension';
 import { serviceForPath, type NexusService } from './switches';
 
-/** Thin JSON transport over the `/partner/*` endpoints. Never throws. */
+/**
+ * Thin JSON transport over the `/partner/*` endpoints. Never throws.
+ *
+ * Every call passes the billing-suspension breaker (see suspension.ts): after
+ * a 402 `billing_suspended` nothing is sent until the pause ends — calls
+ * return null, the same "no answer" every caller already handles.
+ */
 export class NexusHttp {
   private readonly skipped = new Set<NexusService>();
+  private readonly suspension: string;
+  private warnedSuspended = false;
 
   constructor(
     private readonly config: ResolvedConfig,
     private readonly identity: NexusIdentity,
-  ) {}
+  ) {
+    this.suspension = suspensionKey(config.httpBase, config.apiKey);
+  }
+
+  /** Whether calls to `path` are currently paused by a billing suspension. */
+  suspended(path = '/partner'): boolean {
+    return pausedFor(this.suspension, path) > 0;
+  }
+
+  /** Before sending: false = refuse locally (paused). */
+  private admit(path: string): boolean {
+    if (beginRequest(this.suspension, path)) return true;
+    NexusLog.debug(`skipped ${path} — billing suspended`);
+    return false;
+  }
+
+  /** After an answer: start/lift the pause. */
+  private observe(path: string, status: number, body: unknown): void {
+    const error = (body as { error?: { code?: unknown; details?: unknown } } | null)?.error;
+    const seconds = recordResponse(this.suspension, path, status, error?.code, error?.details);
+    if (seconds !== null) {
+      if (!this.warnedSuspended) {
+        this.warnedSuspended = true;
+        NexusLog.warn(`API access is suspended for an overdue invoice — pausing every Nexus call for ${seconds}s`);
+      }
+    } else if (status !== 402) {
+      this.warnedSuspended = false;
+    }
+  }
+
+  private static decode(text: string): unknown {
+    try {
+      return text ? JSON.parse(text) : null;
+    } catch {
+      return null;
+    }
+  }
 
   /** Whether a product is switched on (see `NexusConfig.services`). */
   enabled(service: NexusService): boolean {
@@ -59,6 +104,7 @@ export class NexusHttp {
       }
       return null;
     }
+    if (!this.admit(path)) return null;
     const url = `${this.config.httpBase}${path}`;
     try {
       const res = await this.config.fetch(url, {
@@ -67,13 +113,15 @@ export class NexusHttp {
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
       if (res.ok) {
+        this.observe(path, res.status, null);
         NexusLog.debug(`← ${res.status} ${method} ${path}`);
         const text = await res.text();
         if (!text) return {};
         const decoded = JSON.parse(text);
         return typeof decoded === 'object' && decoded !== null ? decoded : { data: decoded };
       }
-      NexusLog.warn(`← ${res.status} ${method} ${path}`);
+      this.observe(path, res.status, res.status === 402 ? NexusHttp.decode(await res.text()) : null);
+      if (res.status !== 402) NexusLog.warn(`← ${res.status} ${method} ${path}`);
       return null;
     } catch (e) {
       NexusLog.error(`${method} ${path} failed`, e);
@@ -93,6 +141,10 @@ export class NexusHttp {
   ): Promise<{ status: number; body: Record<string, unknown> | null } | null> {
     const service = serviceForPath(path);
     if (service && !this.config.services[service]) return null;
+    if (!this.admit(path)) {
+      const message = 'API access is suspended for an overdue invoice';
+      return { status: 402, body: { error: { code: 'billing_suspended', message } } };
+    }
     try {
       const res = await this.config.fetch(`${this.config.httpBase}${path}`, {
         method: 'POST',
@@ -100,12 +152,8 @@ export class NexusHttp {
         body: JSON.stringify(body),
       });
       const text = await res.text();
-      let decoded: unknown = null;
-      try {
-        decoded = text ? JSON.parse(text) : null;
-      } catch {
-        decoded = null;
-      }
+      const decoded = NexusHttp.decode(text);
+      this.observe(path, res.status, decoded);
       if (!res.ok) NexusLog.warn(`← ${res.status} POST ${path}`);
       return { status: res.status, body: typeof decoded === 'object' && decoded !== null ? (decoded as Record<string, unknown>) : null };
     } catch (e) {

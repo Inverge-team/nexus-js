@@ -31,6 +31,7 @@
  * `identity_locked`, `too_many_pending`, `method_unsupported`).
  */
 import { createHmac, createPublicKey, type JsonWebKey as NodeJwk, timingSafeEqual, verify as cryptoVerify } from 'node:crypto';
+import { beginRequest, pausedFor, recordResponse, suspendedMessage, suspensionKey } from '../suspension';
 
 export class PushAuthError extends Error {
   constructor(
@@ -300,6 +301,10 @@ export class NexusPushAuth {
   // ── transport ─────────────────────────────────────────────────────────────
 
   private async call<T>(method: string, path: string, body?: unknown, extraTimeout = 0): Promise<T> {
+    const suspension = suspensionKey(this.base, this.opts.apiKey);
+    if (!beginRequest(suspension, '/partner/push-auth')) {
+      throw new PushAuthError(suspendedMessage(pausedFor(suspension)), 'billing_suspended', 402);
+    }
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs + extraTimeout);
     let res: Response;
@@ -322,8 +327,10 @@ export class NexusPushAuth {
     } catch {
       /* non-JSON */
     }
+    const failure = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+    recordResponse(suspension, '/partner/push-auth', res.status, failure?.code, failure?.details);
     if (!res.ok) {
-      const err = (json as { error?: { code?: string; message?: string; details?: unknown } } | null)?.error;
+      const err = failure;
       throw new PushAuthError(err?.message ?? `HTTP ${res.status}`, err?.code ?? `http_${res.status}`, res.status, err?.details);
     }
     return json as T;
